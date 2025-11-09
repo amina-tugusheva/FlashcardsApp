@@ -11,9 +11,13 @@ class CardsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Главная')),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Главная')),
+      
       body: Padding(
         padding: const EdgeInsets.all(16),
+        
         child: Column(
           children: [
             // ElevatedButton(
@@ -26,9 +30,11 @@ class CardsPage extends StatelessWidget {
             //     );
             //   },
             // ),
+           
             SizedBox(height: 16),
             ElevatedButton(
               child: const Text('Мои модули'),
+              style: ElevatedButton.styleFrom(minimumSize: Size(500, 50)),
               onPressed: () {
                 // Переход на экран со списком модулей пользователя
                 Navigator.push(

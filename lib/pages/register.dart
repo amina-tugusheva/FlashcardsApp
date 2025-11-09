@@ -98,7 +98,7 @@ class _RegPageState extends State<RegPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          'Login'
+          'Регистрация'
           
           //style: TextStyle(color: const Color.fromARGB(255, 51, 57, 56)),
           ),

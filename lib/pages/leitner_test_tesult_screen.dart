@@ -23,7 +23,8 @@ class LeitnerTestTesultScreen extends StatelessWidget {
     double percent = total > 0 ? (correctCount / total) * 100 : 0;
 
     return Scaffold(
-      appBar: AppBar(title: Text('Результаты теста')),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text('Результаты теста')),
       body: Padding(
         padding: const EdgeInsets.all(30.0),
         child: Column(

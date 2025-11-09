@@ -58,7 +58,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     //обновить Firestore
     if(newValue.trim().length > 0) {
-      await usersCollection.doc(currentUser.email).update({field:newValue});
+      await usersCollection.doc(currentUser.uid).update({field:newValue});
     }
 
   }
@@ -100,8 +100,6 @@ class _ProfilePageState extends State<ProfilePage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('Профиль'),
-
-
       ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance

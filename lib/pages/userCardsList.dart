@@ -5,7 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'flashCardsScreen.dart';
 import 'createCardScreen.dart';
-
+import 'edit_card_screen.dart';
 import 'package:coursework/components/module_model.dart';
 //import 'package:coursework/components/card_model.dart';
 import 'test_screen.dart';
@@ -13,6 +13,7 @@ import 'createModuleScreen.dart';
 import 'moduleListPage.dart';
 import 'createCardScreen.dart';
 import 'test_result_screen.dart';
+import 'autogeneratecards_screen.dart';
 
 // import 'package:coursework/components/card_model.dart';
 import "leitner_test_screen.dart";
@@ -68,6 +69,7 @@ class UserCardsList extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(moduleName),
       ),
 
@@ -273,8 +275,19 @@ class UserCardsList extends StatelessWidget {
                             IconButton(
                               icon: Icon(Icons.edit, color: Colors.blue),
                               tooltip: 'Редактировать карточку',
-                              onPressed: () {
-                                // Ваша логика редактирования карточки здесь
+                              onPressed: () { // логика редактирования карточки 
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditCardScreen(
+                                      moduleId: moduleId,
+                                      cardId: cardDoc.id,
+                                      initialTerm: cardData['term'] ?? '',
+                                      initialDefinition: cardData['definition'] ?? '',
+                                    ),
+                                  ),
+                                );
+                                
                               },
                             ),
                             IconButton(
@@ -331,17 +344,63 @@ class UserCardsList extends StatelessWidget {
         ],
       ),
 
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     Navigator.push(
+      //       context,
+      //       MaterialPageRoute(
+      //         builder: (context) => CreateCardScreen(moduleId: moduleId),
+      //       ),
+      //     );
+      //   },
+      //   child: Icon(Icons.add),
+      //   tooltip: 'Создать новую карточку',
+      // ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => CreateCardScreen(moduleId: moduleId),
-            ),
+          showModalBottomSheet(
+            context: context,
+            builder: (BuildContext ctx) {
+              return SafeArea(
+                child: Wrap(
+                  children: [
+                    ListTile(
+                      leading: Icon(Icons.auto_fix_high),
+                      title: Text('Сгенерировать карточки автоматически'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        // // Откройте экран автоматической генерации карточек
+                        // // Пример:
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AutoGenerateCardsScreen(moduleId: moduleId),
+                          ),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: Icon(Icons.edit),
+                      title: Text('Заполнить вручную'),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        // Откройте экран ручного создания карточки (вариант у вас есть - CreateCardScreen)
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => CreateCardScreen(moduleId: moduleId),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              );
+            },
           );
         },
         child: Icon(Icons.add),
-        tooltip: 'Создать новую карточку',
+        tooltip: 'Добавить карточки',
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );

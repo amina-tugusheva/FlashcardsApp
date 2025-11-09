@@ -90,7 +90,8 @@ class _UserStatisticsPageState extends State<UserStatisticsPage> {
   Widget build(BuildContext context) {
     if (isLoading) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Статистика')),
+        appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Статистика')),
         body: const Center(child: CircularProgressIndicator()),
       );
     }

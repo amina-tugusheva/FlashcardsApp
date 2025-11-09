@@ -13,7 +13,8 @@ class ModuleListPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Мои модули')),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: const Text('Мои модули')),
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             // .collection('modules')

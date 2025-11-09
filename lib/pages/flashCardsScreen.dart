@@ -105,7 +105,8 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text("Обучение")),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text("Обучение")),
       body: Column(
         children: [
           Expanded(

@@ -104,7 +104,8 @@ class _TestScreenState extends State<TestScreen> {
     final currentCard = widget.cards[currentIndex];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Заучивание')),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text('Заучивание')),
       body: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(

@@ -159,7 +159,9 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
     final currentCard = widget.cards[currentIndex];
 
     return Scaffold(
-      appBar: AppBar(title: Text('Тест: ${widget.moduleName}')),
+      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        title: Text('Тест')),
+        // title: Text('Тест: ${widget.moduleName}')),
       body: Padding(
         padding: EdgeInsets.all(24),
         child: Column(

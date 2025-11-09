@@ -79,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(
-          'Login',
+          'Вход',
           style: TextStyle(fontSize: 20),
           ),
 
