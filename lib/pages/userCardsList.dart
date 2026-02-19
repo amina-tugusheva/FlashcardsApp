@@ -68,16 +68,14 @@ class UserCardsList extends StatelessWidget {
         .snapshots();
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(moduleName),
+      appBar: AppBar(title: Text(moduleName),
       ),
 
       body: Column(
         children: [
           // Блок с тремя кнопками
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -122,8 +120,8 @@ class UserCardsList extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text('Карточки'),
-                  style: ElevatedButton.styleFrom(minimumSize: Size(100, 40)),
+                  child: Text('Просмотр'),
+                  // style: ElevatedButton.styleFrom(minimumSize: Size(100, 40)),
                 ),
 
                 // Кнопка "Тестирование"
@@ -173,7 +171,7 @@ class UserCardsList extends StatelessWidget {
                       ),
                     );
                   },
-                  child: Text('Тестирование'),
+                  child: Text('Тест'),
                   style: ElevatedButton.styleFrom(minimumSize: Size(120, 40)),
                 ),
 
@@ -221,7 +219,7 @@ class UserCardsList extends StatelessWidget {
                           ),
                         );
                       },
-                  child: Text('Обучение'),
+                  child: Text('Проверка'),
                   style: ElevatedButton.styleFrom(minimumSize: Size(100, 40)),
                 ),
               ],
@@ -369,8 +367,6 @@ class UserCardsList extends StatelessWidget {
                       title: Text('Сгенерировать карточки автоматически'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        // // Откройте экран автоматической генерации карточек
-                        // // Пример:
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -384,7 +380,6 @@ class UserCardsList extends StatelessWidget {
                       title: Text('Заполнить вручную'),
                       onTap: () {
                         Navigator.pop(ctx);
-                        // Откройте экран ручного создания карточки (вариант у вас есть - CreateCardScreen)
                         Navigator.push(
                           context,
                           MaterialPageRoute(

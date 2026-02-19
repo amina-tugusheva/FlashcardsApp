@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart'; 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:coursework/pages/other_user_prifile_page.dart';
 
 class SearchPage extends StatefulWidget {
   @override
@@ -57,7 +58,6 @@ class _SearchPageState extends State<SearchPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('Поиск пользователей')),
       body: Column(
         children: [
@@ -87,6 +87,28 @@ class _SearchPageState extends State<SearchPage> {
                   title: Text(username),
                   //subtitle: Text(email),
                   onTap: () {
+                    Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PublicUserProfilePage(
+                        otherUserId: user['uid'] ?? '',
+                        otherUserName: username,
+                      ),
+                    ),
+                  );
+
+                  // final userId = user['uid']?.toString();
+                  // if (userId != null) {
+                  //   Navigator.push(
+                  //     context,
+                  //     MaterialPageRoute(
+                  //       builder: (context) => OtherUserProfilePage(
+                  //         otherUserId: userId,
+                  //         otherUserName: username,
+                  //       ),
+                  //     ),
+                  //   );
+                  // }
                     // Действия при выборе пользователя (например, перейти в профиль)
                   },
                 );

@@ -38,10 +38,15 @@ dependencies:
   firebase_auth: ^5.4.2
   provider: 
   cloud_firestore: ^5.6.4
-  
+  # google_fonts: ^6.1.0 # из за версии HTTP не поддерживается 
+  # google_fonts: ^4.0.4
   #path_provider: ^2.0.0 #для работы с файлами 
-  http: ^0.13.5
-  
+  # http: ^0.13.5
+  http: ^1.6.0
+  # file_picker: ^4.6.1
+  # flutter_document_picker: ^5.2.3
+  # image_picker: ^1.0.4 # для добавления изображений при создании карточек 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

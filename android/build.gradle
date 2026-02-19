@@ -10,9 +10,33 @@ subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
 subprojects {
+
+    // afterEvaluate { project ->
+    //     if (project.hasProperty("android")) {
+    //         project.android {
+    //             if (!hasProperty("namespace") || namespace == null) {
+    //                 // Присваивоение namespace по имени группы (group) или значение по умолчанию
+    //                 namespace = project.group ?: "com.example.${project.name}"
+    //             }
+    //         }
+    //     }
+    // }
+    
+    ///////////////////////////////
+    // afterEvaluate { project ->
+    //     if (project.hasProperty('android')) {
+    //         project.android {
+    //             if (namespace == null) {
+    //                 namespace project.group // ?: "com.example.defaultnamespace"
+    //             }
+    //         }
+    //     }
+    // }
+
     project.evaluationDependsOn(":app")
 }
 
 tasks.register("clean", Delete) {
     delete rootProject.buildDir
 }
+

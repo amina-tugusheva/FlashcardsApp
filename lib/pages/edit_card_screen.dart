@@ -34,7 +34,8 @@ class _EditCardScreenState extends State<EditCardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      appBar: AppBar(
+        // backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('Редактировать карточку')),
       body: Padding(
         padding: EdgeInsets.all(16),

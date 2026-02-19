@@ -98,7 +98,6 @@ class _ProfilePageState extends State<ProfilePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text('Профиль'),
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -109,8 +108,6 @@ class _ProfilePageState extends State<ProfilePage> {
         builder: (context, snapshot) {
           if (snapshot.hasData) {
             final userData = snapshot.data!.data() as Map<String, dynamic>;
-
-
             return ListView(
               children: [
 
@@ -123,42 +120,73 @@ class _ProfilePageState extends State<ProfilePage> {
                 onPressed: () => editField('имя пользователя'),
               ),
 
-              Padding(padding: EdgeInsets.only(top: 25),),
+              const SizedBox(height: 32),
 
-              ElevatedButton(
-              child: const Text('история'),
-              onPressed: () {
-                // Переход на экран со историей пройденных тестов 
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TestHistoryPage()),
-                );
-              },
-            ),
-              ElevatedButton(
-                child: const Text('статистика'),
+              // Блок "статистика"
+              Text(
+                'Обучение',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+
+              ElevatedButton.icon(
+                icon: const Icon(Icons.history),
+                label: const Text('История'),
                 onPressed: () {
-                  // Переход на экран со историей пройденных тестов 
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TestHistoryPage()),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
+              ElevatedButton.icon(
+                icon: const Icon(Icons.bar_chart),
+                label: const Text('Статистика'),
+                onPressed: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => UserStatisticsPage()),
                   );
                 },
               ),
-              CustomButton(
-                text: 'тема', 
-                icon: Icons.brightness_4, 
-                onPressed:  () {
-                  Provider.of<ThemeProvidor>(context, listen: false).toggletheme();
-                },
+
+              const SizedBox(height: 32),
+
+              // Блок "настройки" (отдельный, скролл общий у ListView)
+              Text(
+                'Настройки',
+                style: Theme.of(context).textTheme.titleMedium,
               ),
-              CustomButton(
-                text: 'выход', 
-                icon: Icons.logout, 
-                onPressed: logout,
+              const SizedBox(height: 12),
+
+              Card(
+                child: Column(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.brightness_4),
+                      title: const Text('Тема'),
+                      subtitle: Text(
+                        'Светлая / тёмная',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      onTap: () {
+                        Provider.of<ThemeProvidor>(context, listen: false).toggletheme();
+                      },
+                    ),
+                    const Divider(height: 0),
+                    ListTile(
+                      leading: const Icon(Icons.logout),
+                      title: const Text('Выход'),
+                      onTap: logout,
+                    ),
+                  ],
+                ),
               ),
 
-            ]
+              const SizedBox(height: 24),
+            ],
 
             );
           } else if (snapshot.hasError){

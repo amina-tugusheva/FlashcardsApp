@@ -6,6 +6,8 @@ class ModuleModel {
   final String description;
   final String userId;
   final Timestamp createdAt;
+  final int? cardsCount;
+  final bool? isPublic;
 
   ModuleModel({
     required this.id,
@@ -13,6 +15,8 @@ class ModuleModel {
     required this.description,
     required this.userId,
     required this.createdAt,
+    this.cardsCount,
+    this.isPublic,
   });
 
   factory ModuleModel.fromFirestore(DocumentSnapshot doc) {
@@ -23,6 +27,8 @@ class ModuleModel {
       description: data['description'] ?? '',
       userId: data['userId'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
+      cardsCount: data['cardsCount'],
+      isPublic: data['isPublic'] ?? false,
     );
   }
 
