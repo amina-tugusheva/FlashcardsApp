@@ -23,11 +23,11 @@ ThemeData darkMode = ThemeData(
   
   
   colorScheme: ColorScheme.fromSeed(
-    seedColor: Color.fromARGB(255, 54, 79, 56), 
+    seedColor: Color.fromARGB(255, 41, 29, 63), 
     brightness: Brightness.dark,
-    primary: Color.fromARGB(255, 69, 102, 70),      
-    secondary: Color.fromARGB(255, 45, 55, 53),   
-    tertiary: Color.fromARGB(255, 157, 167, 158),     
+    primary: Color.fromARGB(255, 132, 132, 158),      
+    secondary: Color.fromARGB(255, 43, 43, 61),   
+    tertiary: Color.fromARGB(255, 85, 83, 106),     
     surface: Color(0xFF0D1B2A),      // фон
     onPrimary: Colors.white,
     onSecondary: Colors.white,
@@ -106,15 +106,17 @@ ThemeData darkMode = ThemeData(
 
   // Стили для карточек и кнопок
   cardTheme: CardTheme(
-    color: Color(0xFF1B4332), // Темно-зеленый фон карточек
+    // color: Color.fromARGB(255, 30, 36, 45), // фон карточек
+    color: Color.fromARGB(255, 38, 43, 66),
     elevation: 8,
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    shadowColor: Color.fromARGB(255, 82, 122, 84).withOpacity(0.5),
+    shadowColor: Color.fromARGB(255, 17, 17, 18).withOpacity(0.5),
   ),
   
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ElevatedButton.styleFrom(
-      backgroundColor: Color.fromARGB(255, 48, 52, 49),
+      backgroundColor: Color.fromARGB(255, 53, 49, 80),
+      // backgroundColor: Color.fromARGB(255, 58, 50, 107),
       foregroundColor: Colors.white,
       elevation: 6,
       padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
@@ -123,15 +125,27 @@ ThemeData darkMode = ThemeData(
   ),
   
   appBarTheme: AppBarTheme(
-    backgroundColor: Color.fromARGB(255, 56, 64, 56),
+    backgroundColor: Color.fromARGB(255, 4, 23, 42),
     foregroundColor: Colors.white,
     elevation: 4,
-    shadowColor: Color.fromARGB(255, 112, 118, 112),
+    shadowColor: Color.fromARGB(255, 0, 0, 0),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(
       bottomLeft: Radius.circular(20),
       bottomRight: Radius.circular(20),
     )),
   ),
+  tabBarTheme: TabBarTheme(
+  indicatorColor: const Color.fromARGB(255, 189, 186, 199),           // Полоска снизу
+  labelColor: const Color.fromARGB(255, 204, 202, 211),               // Активный текст
+  unselectedLabelColor: const Color.fromARGB(255, 97, 103, 118),  // Неактивный
+  indicator: UnderlineTabIndicator(         // Кастом полоска
+    borderSide: BorderSide(width: 3, color:const Color.fromARGB(255, 204, 202, 211)),
+  ),
+),
+bottomNavigationBarTheme: BottomNavigationBarThemeData(
+  selectedItemColor: Color.fromARGB(255, 255, 255, 255),            // Активная иконка/текст
+
+),
   
   scaffoldBackgroundColor: Color(0xFF0A1929),
 );

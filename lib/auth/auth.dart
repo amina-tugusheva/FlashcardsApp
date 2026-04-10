@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:coursework/pages/home.dart';
 
+import 'package:coursework/pages/email_verification.dart';
+
 class AuthPage extends StatelessWidget {
   const AuthPage({super.key});
 
@@ -10,18 +12,37 @@ class AuthPage extends StatelessWidget {
   Widget build(BuildContext context) {
     
     return Scaffold(
-      body: StreamBuilder(stream: FirebaseAuth.instance.authStateChanges(),
-       builder: (context, snapshop) {
-        // пользователь уже зарегистрирован 
-        if ( snapshop.hasData) {
-          return const HomePage();
-        }
-        // пользователь еще не зарегистрирован 
-        else {
-          return const LogOrReg();
-        }
+      // body: StreamBuilder(stream: FirebaseAuth.instance.authStateChanges(),
+      //  builder: (context, snapshop) {
+      //   // пользователь уже зарегистрирован 
+      //   if ( snapshop.hasData) {
+      //     return const HomePage();
+      //   }
+      //   // пользователь еще не зарегистрирован 
+      //   else {
+      //     return const LogOrReg();
+      //   }
 
-       },
+      //  },
+      // ),
+      body: StreamBuilder<User?>(
+        stream: FirebaseAuth.instance.authStateChanges(),
+        builder: (context, snapshot) {
+          // НЕ АВТОРИЗОВАН
+          if (!snapshot.hasData) {
+            return const LogOrReg();
+          }
+
+          User user = snapshot.data!;
+
+          // АВТОРИЗОВАН + EMAIL ПОДТВЕРЖДЁН → HomePage
+          if (user.emailVerified) {
+            return const HomePage();
+          }
+
+          // АВТОРИЗОВАН, НО EMAIL НЕ ПОДТВЕРЖДЁН → EmailVerificationPage
+          return const EmailVerificationPage();
+        },
       ),
 
     );

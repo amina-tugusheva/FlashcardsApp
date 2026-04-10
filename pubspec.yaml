@@ -38,14 +38,20 @@ dependencies:
   firebase_auth: ^5.4.2
   provider: 
   cloud_firestore: ^5.6.4
+  shared_preferences: ^2.2.2 # для сохранения выбранной темы после выхода из приложения
   # google_fonts: ^6.1.0 # из за версии HTTP не поддерживается 
   # google_fonts: ^4.0.4
   #path_provider: ^2.0.0 #для работы с файлами 
   # http: ^0.13.5
-  http: ^1.6.0
+  # http: ^1.6.0
   # file_picker: ^4.6.1
   # flutter_document_picker: ^5.2.3
-  # image_picker: ^1.0.4 # для добавления изображений при создании карточек 
+  image_picker: ^1.0.4 # для добавления изображений при создании карточек 
+  firebase_storage: ^12.1.1  # позволяет хранить и обмениваться пользовательским контентом
+  path: ^1.9.0
+
+  http: ^1.2.1  # для API запросов (использую для поиска картинок по теме из интернета)
+
 
 dev_dependencies:
   flutter_test:

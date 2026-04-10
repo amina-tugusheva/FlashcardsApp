@@ -52,7 +52,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         currentIndex: _selectedIndex,
-        selectedItemColor: Colors.blueAccent,
+        // selectedItemColor: Colors.blueAccent,
         onTap: _onItemTapped,
       ),
 

@@ -8,308 +8,234 @@ import 'package:provider/provider.dart';
 
 
 import 'package:coursework/components/module_model.dart';
-import 'package:flutter/material.dart';
+import 'userCardsList.dart';
 
 class PublicUserProfilePage extends StatelessWidget {
-  final String otherUserId;
-  final String otherUserName;
+  final String targetUserId;
+  final String targetUsername;
 
   const PublicUserProfilePage({
     Key? key,
-    required this.otherUserId,
-    required this.otherUserName,
+    required this.targetUserId,
+    required this.targetUsername,
   }) : super(key: key);
 
   @override
-  
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final textStyles = theme.textTheme;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text(otherUserName),
-        backgroundColor: colors.primary,
-        foregroundColor: colors.onPrimary,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                colors.primary,
-                colors.primary.withOpacity(0.8),
+        title: Text('Модули $targetUsername'),
+        // ❌ БЕЗ кнопки создания (чужие модули)
+      ),
+      body: Column(
+        children: [
+          // ✅ ИМЯ ПОЛЬЗОВАТЕЛЯ
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(20),
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Column(
+              children: [
+                Text(
+                  targetUsername,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                // SizedBox(height: 4),
+                // Text(
+                //   '@$targetUsername',
+                //   style: TextStyle(
+                //     color: Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.8),
+                //   ),
+                // ),
               ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
             ),
           ),
-        ),
-      ),
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              height: 120,
-              padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    colors.primary,
-                    colors.primary.withOpacity(0.6),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: SafeArea(
-                child: Row(
-                  children: [
-                    // Аватар
-                    CircleAvatar(
-                      radius: 32,
-                      backgroundColor: colors.onPrimary,
-                      child: Text(
-                        otherUserName.isNotEmpty
-                            ? otherUserName[0].toUpperCase()
-                            : '?',
-                        style: textStyles.headlineSmall?.copyWith(
-                          color: colors.primary,
-                          fontWeight: FontWeight.bold,
+          
+          // ✅ МОДУЛИ
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(targetUserId)
+                  .collection('modules')
+                  .where('isPublic', isEqualTo: true)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.folder_open, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text('Публичных модулей нет'),
+                      ],
+                    ),
+                  );
+                }
+
+                final modules = snapshot.data!.docs
+                    .map((doc) => ModuleModel.fromFirestore(doc))
+                    .toList();
+
+                return ListView.builder(
+                  padding: EdgeInsets.all(16),
+                  itemCount: modules.length,
+                  itemBuilder: (context, index) {
+                    final module = modules[index];
+                    return Card(
+                      margin: EdgeInsets.symmetric(vertical: 4),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.all(16),
+                        leading: CircleAvatar(
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                          child: Text('${module.cardsCount ?? 0}'),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    
-                    // Имя пользователя
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            otherUserName,
-                            style: textStyles.titleLarge?.copyWith(
-                              color: colors.onPrimary,
-                              fontWeight: FontWeight.bold,
+                        title: Text(module.name),
+                        subtitle: Text(module.description ?? ''),
+                        trailing: Icon(Icons.arrow_forward_ios),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserCardsList(
+                                moduleId: module.id,
+                                moduleName: module.name,
+                                authorId: targetUserId,
+                                isPublicStudy: true, 
+                              ),
                             ),
-                          ),
-                          Text(
-                            'Модули',
-                            style: textStyles.bodyLarge?.copyWith(
-                              color: colors.onPrimary.withOpacity(0.9),
-                            ),
-                          ),
-                        ],
+                          );
+                        },
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    );
+                  },
+                );
+              },
             ),
           ),
         ],
       ),
-      // body: Container(
-      //   width: double.infinity,
-      //   padding: const EdgeInsets.all(24),
-      //   decoration: BoxDecoration(
-      //     gradient: LinearGradient(
-      //       colors: [
-      //         colors.primary,
-      //         colors.primary.withOpacity(0.8),
-      //       ],
-      //       begin: Alignment.topCenter,
-      //       end: Alignment.bottomCenter,
-      //     ),
-      //   ),
-      //   child: Column(
-      //     mainAxisAlignment: MainAxisAlignment.center,
-      //     children: [
-      //       // Аватар
-      //       CircleAvatar(
-      //         radius: 50,
-      //         backgroundColor: colors.onPrimary,
-      //         child: Text(
-      //           otherUserName.isNotEmpty 
-      //               ? otherUserName[0].toUpperCase()
-      //               : '?',
-      //           style: textStyles.headlineMedium?.copyWith(
-      //             color: colors.primary,
-      //             fontWeight: FontWeight.bold,
-      //             fontSize: 40,
-      //           ),
-      //         ),
-      //       ),
-      //       const SizedBox(height: 24),
-            
-      //       // Имя пользователя
-      //       Text(
-      //         otherUserName,
-      //         style: textStyles.headlineLarge?.copyWith(
-      //           color: colors.onPrimary,
-      //           fontWeight: FontWeight.bold,
-      //         ),
-      //         textAlign: TextAlign.center,
-      //       ),
-      //       const SizedBox(height: 16),
-            
-      //       // Подзаголовок
-      //       Container(
-      //         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      //         decoration: BoxDecoration(
-      //           color: colors.onPrimary.withOpacity(0.2),
-      //           borderRadius: BorderRadius.circular(20),
-      //         ),
-      //         child: Text(
-      //           'Пользователь',
-      //           style: textStyles.titleMedium?.copyWith(
-      //             color: colors.onPrimary,
-      //           ),
-      //         ),
-      //       ),
-      //       const SizedBox(height: 32),
-            
-      //       // Кнопка "Смотреть модули" (пока заглушка)
-      //       SizedBox(
-      //         width: double.infinity,
-      //         child: OutlinedButton.icon(
-      //           icon: const Icon(Icons.folder_special),
-      //           label: const Text('Смотреть модули'),
-      //           style: OutlinedButton.styleFrom(
-      //             foregroundColor: colors.onPrimary,
-      //             side: BorderSide(color: colors.onPrimary.withOpacity(0.5)),
-      //             padding: const EdgeInsets.symmetric(vertical: 16),
-      //             shape: RoundedRectangleBorder(
-      //               borderRadius: BorderRadius.circular(16),
-      //             ),
-      //           ),
-      //           onPressed: () {
-      //             // Пока пустая заглушка
-      //             ScaffoldMessenger.of(context).showSnackBar(
-      //               const SnackBar(
-      //                 content: Text('Модули скоро появятся!'),
-      //                 duration: Duration(seconds: 2),
-      //               ),
-      //             );
-      //           },
-      //         ),
-      //       ),
-      //     ],
-      //   ),
-      // ),
+    //   body: StreamBuilder<QuerySnapshot>(
+    //     stream: FirebaseFirestore.instance
+    //         .collection('Users')
+    //         .doc(otherUserId)  // 
+    //         .collection('modules')
+    //         .where('isPublic', isEqualTo: true)  //  Только публичные
+    //         .orderBy('createdAt', descending: true)
+    //         .snapshots(),
+    //         builder: (context, snapshot) {
+    //           if (snapshot.connectionState == ConnectionState.waiting) {
+    //         return Center(child: CircularProgressIndicator());
+    //       }
+
+    //       if (snapshot.hasError) {
+    //         return Center(child: Text('Ошибка загрузки: ${snapshot.error}'));
+    //       }
+
+    //       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+    //         return Center(
+    //           child: Column(
+    //             mainAxisAlignment: MainAxisAlignment.center,
+    //             children: [
+    //               Icon(Icons.lock_open_outlined, size: 64, color: Colors.grey),
+    //               SizedBox(height: 16),
+    //               Text('У $otherUserName нет публичных модулей'),
+    //             ],
+    //           ),
+    //         );
+    //       }
+
+    //       final modules = snapshot.data!.docs.map((doc) => ModuleModel.fromFirestore(doc)).toList();
+
+    //       return ListView.builder(
+    //         padding: const EdgeInsets.all(16),
+    //         itemCount: modules.length,
+    //         itemBuilder: (context, index) {
+    //           final module = modules[index];
+    //           final isPublic = module.isPublic ?? false; // Всегда true из-за where
+
+    //           return Card(
+    //             margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+    //             child: ListTile(
+    //               contentPadding: const EdgeInsets.all(16),
+    //               leading: CircleAvatar(
+    //                 backgroundColor: isPublic
+    //                     ? Theme.of(context).colorScheme.primaryContainer
+    //                     : Theme.of(context).colorScheme.surfaceVariant,
+    //                 foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+    //                 child: Text(
+    //                   '${module.cardsCount ?? 0}',
+    //                   style: const TextStyle(fontWeight: FontWeight.bold),
+    //                 ),
+    //               ),
+    //               title: Text(
+    //                 module.name,
+    //                 style: Theme.of(context).textTheme.titleMedium,
+    //               ),
+    //               subtitle: Column(
+    //                 crossAxisAlignment: CrossAxisAlignment.start,
+    //                 children: [
+    //                   if (module.description?.isNotEmpty == true) Text(module.description!),
+    //                   if (isPublic)
+    //                     Container(
+    //                       margin: const EdgeInsets.only(top: 4),
+    //                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+    //                       decoration: BoxDecoration(
+    //                         color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+    //                         borderRadius: BorderRadius.circular(12),
+    //                       ),
+    //                       child: Text(
+    //                         'Публичный',
+    //                         style: TextStyle(
+    //                           color: Theme.of(context).colorScheme.primary,
+    //                           fontSize: 12,
+    //                         ),
+    //                       ),
+    //                     ),
+    //                 ],
+    //               ),
+    //               trailing: Row(
+    //                 mainAxisSize: MainAxisSize.min,
+    //                 children: [
+    //                   Icon(
+    //                     isPublic ? Icons.public : Icons.lock,
+    //                     color: isPublic
+    //                         ? Theme.of(context).colorScheme.primary
+    //                         : Theme.of(context).colorScheme.onSurfaceVariant,
+    //                     size: 20,
+    //                   ),
+    //                   // ❌ БЕЗ кнопки удаления
+    //                 ],
+    //               ),
+    //               onTap: () {
+    //                 Navigator.push(
+    //                   context,
+    //                   MaterialPageRoute(
+    //                     builder: (context) => UserCardsList(
+    //                       moduleId: module.id,
+    //                       moduleName: module.name,
+    //                       // ✅ isPublic: true, targetUserId: targetUserId (если нужно)
+    //                     ),
+    //                   ),
+    //                 );
+    //               },
+    //             ),
+    //           );
+    //         },
+    //       );
+              
+    //         },
+    //   ),
+
     );
   }
 }
-// class OtherUserProfilePage extends StatefulWidget {
-//   final String otherUserUid;
-  
-//   const OtherUserProfilePage({
-//     super.key,
-//     required this.otherUserUid,
-//   });
-
-//   @override
-//   State<OtherUserProfilePage> createState() => _OtherUserProfilePageState();
-// }
-
-// class _OtherUserProfilePageState extends State<OtherUserProfilePage> {
-//   final usersCollection = FirebaseFirestore.instance.collection("Users");
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: const Text('Профиль пользователя'),
-//         // backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-//       ),
-//       body: StreamBuilder<DocumentSnapshot>(
-//         stream: usersCollection.doc(widget.otherUserUid).snapshots(),
-//         builder: (context, snapshot) {
-//           // Обработка ошибок
-//           if (snapshot.hasError) {
-//             return Center(
-//               child: Text('Ошибка: ${snapshot.error}'),
-//             );
-//           }
-          
-//           // Проверка на существование данных
-//           // if (!snapshot.hasData || !snapshot.data!.exists) {
-//           //   return const Center(
-//           //     child: Text('Пользователь не найден'),
-//           //   );
-//           // }
-
-//           // Безопасное получение данных
-//           final userData = snapshot.data!.data() as Map<String, dynamic>?;
-//           if (userData == null) {
-//             return const Center(
-//               child: Text('Нет данных пользователя'),
-//             );
-//           }
-
-//           // Имя пользователя из Firestore (как сохраняется в вашей регистрации)
-//           final userName = userData['имя пользователя'] ?? 'Не указано';
-//           final userEmail = userData['email'] ?? 'Не указано';
-
-//           return ListView(
-//             children: [
-//               const Padding(padding: EdgeInsets.only(top: 25)),
-
-//               // Отображение имени пользователя (нельзя редактировать)
-//               MyTextBox(
-//                 text: userEmail,
-//                 secondName: userName,
-//                 iconName: const Icon(Icons.person),
-//                 onPressed: null, // Запрещаем редактирование чужого профиля
-//               ),
-
-//               const SizedBox(height: 32),
-
-//               // Заголовок "Обучение" (информационный)
-//               Text(
-//                 'Обучение',
-//                 style: Theme.of(context).textTheme.titleMedium,
-//               ),
-//               const SizedBox(height: 12),
-
-//               // Информационные кнопки (без функционала)
-//               Card(
-//                 child: Padding(
-//                   padding: const EdgeInsets.all(16.0),
-//                   child: Column(
-//                     children: [
-//                       ListTile(
-//                         leading: const Icon(Icons.history),
-//                         title: const Text('История'),
-//                         subtitle: const Text('Доступна только владельцу'),
-//                       ),
-//                       ListTile(
-//                         leading: const Icon(Icons.bar_chart),
-//                         title: const Text('Статистика'),
-//                         subtitle: const Text('Доступна только владельцу'),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-
-//               const SizedBox(height: 32),
-
-//               // Кнопка "Назад"
-//               Padding(
-//                 padding: const EdgeInsets.symmetric(horizontal: 25.0),
-//                 child: MyButton(
-//                   text: 'Назад',
-//                   onTap: () => Navigator.pop(context),
-//                 ),
-//               ),
-
-//               const SizedBox(height: 24),
-//             ],
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }

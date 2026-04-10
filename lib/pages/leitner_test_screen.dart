@@ -7,6 +7,7 @@ import 'dart:math';
 // import 'package:flutter/material.dart';
 // import 'package:cloud_firestore/cloud_firestore.dart';
 // import 'package:firebase_auth/firebase_auth.dart';
+import 'module_progress_service.dart';
 
 class LeitnerTestScreen extends StatefulWidget {
   final String moduleId;
@@ -68,18 +69,18 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
   allOtherCards.shuffle(Random());
   
   // Берем 3 случайных неправильных ответа ИЗ ВСЕЙ КОЛОДЫ
-  final wrongAnswers = allOtherCards.take(3).map((c) => c.definition).toList();
-  
-  while (wrongAnswers.length < 3) {
-    wrongAnswers.addAll(allOtherCards.take(3 - wrongAnswers.length)
-        .map((c) => c.definition));
-  }
+  final wrongTerms = allOtherCards.take(3).map((c) => c.term).toList();
+    
+    while (wrongTerms.length < 3) {
+      wrongTerms.addAll(allOtherCards.take(3 - wrongTerms.length)
+          .map((c) => c.term));
+    }
 
-  // Создаем полный список: 1 правильный + 3 неправильных из всей колоды
-  List<String> choices = [currentCard!.definition, ...wrongAnswers];
-  choices.shuffle(Random());
-  
-  shuffledChoices = choices;
+    // Создаем полный список: 1 правильный термин + 3 неправильных
+    List<String> choices = [currentCard!.term, ...wrongTerms];
+    choices.shuffle(Random());
+    
+    shuffledChoices = choices;
 }
 
   Future<void> _updateCard(CardModel card, bool isCorrect) async {
@@ -120,7 +121,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
     });
 
     totalAttempts++;
-    final isCorrect = shuffledChoices[selectedIndex] == currentCard!.definition;
+    final isCorrect = shuffledChoices[selectedIndex] == currentCard!.term;
     sessionResults.add(isCorrect);
 
     if (isCorrect) {
@@ -142,7 +143,18 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
     _showNextCard();
   }
 
-  void _finishTest() {
+  void _finishTest() async {
+    // ✅ +1 сессия TestScreen!
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection('modules')
+        .doc(widget.moduleId)
+        .update({'leitnerSessions': FieldValue.increment(1)});
+    
+    // ✅ Обновляем общую статистику
+    await ModuleProgressService.updateModuleStats(widget.moduleId);
+
     final readinessLevel = _calculateReadiness();
     final leitnerRecommendation = _getLeitnerRecommendation();
 
@@ -157,6 +169,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
           readinessLevel: readinessLevel,
           leitnerRecommendation: leitnerRecommendation,
           moduleName: widget.moduleName,
+          moduleId: widget.moduleId,
         ),
       ),
     );
@@ -215,6 +228,8 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
       );
     }
 
+    final hasImage = currentCard!.imageUrl.isNotEmpty && currentCard!.imageUrl != '';
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Тест: ${widget.moduleName}'),
@@ -239,27 +254,64 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
         ),
       ),
       body: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
               'Осталось карточек: ${remainingCards.length}',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 24),
             
             Text(
-              currentCard!.term,
+              currentCard!.definition,
               style: TextStyle(
-                fontSize: 28,
+                fontSize: 26,
                 fontWeight: FontWeight.bold,
-                color: Colors.blue[800],
+                // color: Colors.blue[800],
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 40),
+            SizedBox(height: 10),
+
+            Container(
+              height: 120,  // Было 250 → теперь 120 (в 2 раза меньше)
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  currentCard!.imageUrl,
+                  fit: BoxFit.cover,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: Colors.grey[200],
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: Colors.grey[300],
+                      child: Icon(Icons.broken_image, size: 48, color: Colors.grey[400]),
+                    );
+                  },
+                ),
+              ),
+            ),
+            
+            SizedBox(height: 28),
 
             Expanded(
               child: ListView.separated(
@@ -271,7 +323,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
 
                   if (selectedAnswerIndex != null) {
                     final isSelected = index == selectedAnswerIndex;
-                    final isCorrectAnswer = shuffledChoices[index] == currentCard!.definition;
+                    final isCorrectAnswer = shuffledChoices[index] == currentCard!.term;
 
                     if (isSelected && isCorrectAnswer) {
                       cardColor = Colors.green[100];

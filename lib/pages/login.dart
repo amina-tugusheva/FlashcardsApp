@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:coursework/components/my_textfield.dart';
 import 'package:coursework/components/square_title.dart';
+import 'dart:async'; // Для таймеров
 
 class LoginPage extends StatefulWidget {
 
@@ -15,219 +16,466 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+
   // text editing controllers
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  
+  final resetEmailController = TextEditingController();
 
-  // метод для входа пользователя 
-  void signUserIn() async {
-    //загрузка 
-    showDialog(context: context,
-     builder: (context) => const Center(
-      child: CircularProgressIndicator()
+  // // Forgot password
+  // final TextEditingController resetEmailController = TextEditingController();
+  // bool _showResetDialog = false;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    resetEmailController.dispose();
+    super.dispose();
+  }
+
+  // Вход с валидацией
+  Future<void> signUserIn() async {
+    if (!_formKey.currentState!.validate()) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text,
+      );
+
+      if (context.mounted) Navigator.pop(context);
+      
+    } on FirebaseAuthException catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      _showError(_getAuthErrorMessage(e.code));
+    } catch (e) {
+      if (context.mounted) Navigator.pop(context);
+      _showError('Произошла ошибка: $e');
+    }
+  }
+
+  // Сброс пароля (ДИАЛОГ)
+  Future<void> _showResetPasswordDialog() async {
+    resetEmailController.clear();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Сброс пароля'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Введите email для отправки ссылки:'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: resetEmailController,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: true,
+              decoration: const InputDecoration(
+                hintText: 'ваш email',
+                border: OutlineInputBorder(),
+                // prefixIcon: Icon(Icons.email_outlined),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              resetPassword();
+            },
+            // style: ElevatedButton.styleFrom(
+            //   backgroundColor: Colors.orange,
+            //   foregroundColor: Colors.white,
+            // ),
+            child: const Text('Отправить'),
+          ),
+        ],
       ),
     );
-    // try sign in 
-    try{
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: emailController.text, 
-        password: passwordController.text);
-
-        // loadind circle
-        if (context.mounted) Navigator.pop(context);
-    }
-    //ошибки 
-    on FirebaseAuthException catch (e) {
-    // закрываем индикатор загрузки
-    if (context.mounted) Navigator.pop(context);
-    
-    // обработка ошибок
-    switch (e.code) {
-      case 'invalid-email':
-        displayMassageToUser('Неверный формат электронной почты.', context);
-        break;
-      case 'user-disabled':
-        displayMassageToUser('Пользователь был отключен.', context);
-        break;
-      case 'user-not-found':
-        displayMassageToUser('Пользователь не найден.', context);
-        break;
-      case 'wrong-password':
-        displayMassageToUser('Неверный пароль.', context);
-        break;
-      case 'too-many-requests':
-        displayMassageToUser('Слишком много запросов. Попробуйте позже.', context);
-        break;
-      case 'operation-not-allowed':
-        displayMassageToUser('Аутентификация с использованием электронной почты и пароля отключена.', context);
-        break;
-      default:
-        displayMassageToUser('Произошла ошибка. Пожалуйста, попробуйте еще раз.', context);
-    }
-  } catch (e) {
-    // обрабатываем другие возможные исключения
-    Navigator.pop(context);
-    displayMassageToUser('Произошла ошибка: $e', context);
   }
-}
+
+  // Отправка ссылки сброса
+  Future<void> resetPassword() async {
+    if (resetEmailController.text.trim().isEmpty) {
+      _showError('Введите email');
+      return;
+    }
+
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(
+        email: resetEmailController.text.trim(),
+      );
+      
+      _showSuccess('Ссылка для сброса пароля отправлена на ${resetEmailController.text.trim()}!');
+      
+    } on FirebaseAuthException catch (e) {
+      _showError(_getResetErrorMessage(e.code));
+    } catch (e) {
+      _showError('Ошибка отправки: $e');
+    }
+  }
+
+  // Валидация email
+  String? validateEmail(String? value) {
+    if (value == null || value.trim().isEmpty) {
+      return 'Email обязателен';
+    }
+    if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w{2,}$').hasMatch(value.trim())) {
+      return 'Неверный формат email';
+    }
+    return null;
+  }
+
+  // Валидация пароля
+  String? validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Пароль обязателен';
+    }
+    if (value.length < 6) {
+      return 'Минимум 6 символов';
+    }
+    return null;
+  }
+
+  // Русские сообщения об ошибках
+  String _getAuthErrorMessage(String code) {
+    switch (code) {
+      case 'invalid-email':
+        return 'Неверный формат email';
+      case 'user-disabled':
+        return 'Аккаунт отключён';
+      case 'user-not-found':
+        return 'Пользователь не найден';
+      case 'wrong-password':
+        return 'Неверный пароль';
+      case 'too-many-requests':
+        return 'Много попыток. Подождите.';
+      default:
+        return 'Ошибка: $code';
+    }
+  }
+// ✅ Сообщения об ошибках сброса
+  String _getResetErrorMessage(String code) {
+    switch (code) {
+      case 'invalid-email': return 'Неверный email';
+      case 'user-not-found': return 'Пользователь не найден';
+      default: return 'Ошибка: $code';
+    }
+  }
+
+  // ✅ Показать ошибку
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [Icon(Icons.error, color: Colors.white), SizedBox(width: 8), Expanded(child: Text(message))]),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  // ✅ Показать успех
+  void _showSuccess(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(children: [Icon(Icons.check_circle, color: Colors.white), SizedBox(width: 8), Expanded(child: Text(message))]),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+
+
+//   // метод для входа пользователя 
+//   void signUserIn() async {
+//     //загрузка 
+//     showDialog(context: context,
+//      builder: (context) => const Center(
+//       child: CircularProgressIndicator()
+//       ),
+//     );
+//     // try sign in 
+//     try{
+//       await FirebaseAuth.instance.signInWithEmailAndPassword(
+//         email: emailController.text, 
+//         password: passwordController.text);
+
+//         // loadind circle
+//         if (context.mounted) Navigator.pop(context);
+//     }
+//     //ошибки 
+//     on FirebaseAuthException catch (e) {
+//     // закрываем индикатор загрузки
+//     if (context.mounted) Navigator.pop(context);
+    
+//     // обработка ошибок
+//     switch (e.code) {
+//       case 'invalid-email':
+//         displayMassageToUser('Неверный формат электронной почты.', context);
+//         break;
+//       case 'user-disabled':
+//         displayMassageToUser('Пользователь был отключен.', context);
+//         break;
+//       case 'user-not-found':
+//         displayMassageToUser('Пользователь не найден.', context);
+//         break;
+//       case 'wrong-password':
+//         displayMassageToUser('Неверный пароль.', context);
+//         break;
+//       case 'too-many-requests':
+//         displayMassageToUser('Слишком много запросов. Попробуйте позже.', context);
+//         break;
+//       case 'operation-not-allowed':
+//         displayMassageToUser('Аутентификация с использованием электронной почты и пароля отключена.', context);
+//         break;
+//       default:
+//         displayMassageToUser('Произошла ошибка. Пожалуйста, попробуйте еще раз.', context);
+//     }
+//   } catch (e) {
+//     // обрабатываем другие возможные исключения
+//     Navigator.pop(context);
+//     displayMassageToUser('Произошла ошибка: $e', context);
+//   }
+// }
 
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(
-          'Вход',
-          style: TextStyle(fontSize: 20),
-          ),
+      // appBar: AppBar(
+      //   backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+      //   title: Text(
+      //     'Вход',
+      //     style: TextStyle(fontSize: 20),
+      //     ),
 
-      ),
+      // ),
       body: SafeArea(
-        child: Center(
-          child: Column(
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width * 0.08,
+            vertical: 16,
+          ),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
             
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              /* const SizedBox(height: 50),
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                /* const SizedBox(height: 50),
 
-              // logo
-              const Icon(
-                Icons.lock,
-                size: 100,
-              ), */
+                // logo
+                const Icon(
+                  Icons.lock,
+                  size: 100,
+                ), */
 
-              //const SizedBox(height: 200),
+                const SizedBox(height: 50),
 
-              // текст 
-              Text(
-                'Добро пожаловать! Войдите в систему',
-                style: TextStyle(
-                  //color: Colors.grey[700],
-                  fontSize: 16,
+                // текст 
+                Text(
+                  'Добро пожаловать! Войдите в систему',
+                  style: TextStyle(
+                    //color: Colors.grey[700],
+                    fontSize: 16,
+                  ),
                 ),
-              ),
 
-              //const SizedBox(height: 25),
-              Padding(padding: EdgeInsets.only(top: 25),),
+                //const SizedBox(height: 25),
+                // Padding(padding: EdgeInsets.only(top: 25),),
 
-              // username textfield
-              MyTextField(
-                controller: emailController,
-                hintText: 'e-mail',
-                obscureText: false,
-              ),
+                // // username textfield
+                // MyTextField(
+                //   controller: emailController,
+                //   hintText: 'e-mail',
+                //   obscureText: false,
+                // ),
 
-              //const SizedBox(height: 10),
-              Padding(padding: EdgeInsets.only(top: 10),),
+                // //const SizedBox(height: 10),
+                // Padding(padding: EdgeInsets.only(top: 10),),
+                const SizedBox(height: 32),
 
-              // password textfield
-              MyTextField(
-                controller: passwordController,
-                hintText: 'Пароль',
-                obscureText: true,
-              ),
+                  // Email поле с валидацией
+                  TextFormField(
+                    controller: emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: validateEmail,
+                    decoration: const InputDecoration(
+                      hintText: 'Email',
+                      // prefixIcon: Icon(Icons.email_outlined),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
 
-              //если забыли пароль 
-              //const SizedBox(height: 6),
-              Padding(padding: EdgeInsets.only(top: 6),),
+                // // password textfield
+                // MyTextField(
+                //   controller: passwordController,
+                //   hintText: 'Пароль',
+                //   obscureText: true,
+                // ),
+                //  Пароль с иконкой глаза
+                  TextFormField(
+                    controller: passwordController,
+                    obscureText: true,
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: validatePassword,
+                    decoration: const InputDecoration(
+                      hintText: 'Пароль',
+                      // prefixIcon: Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+
+                // //если забыли пароль 
+                // //const SizedBox(height: 6),
+                // Padding(padding: EdgeInsets.only(top: 6),),
+
+                // Padding(
+                //   padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                //   child: Row(
+                //     mainAxisAlignment: MainAxisAlignment.end,
+                //     children: [
+                //       Text(
+                //         'забыли пароль?',
+                //         //style: TextStyle(color: const Color.fromARGB(255, 51, 57, 56)),
+                //       ),
+                //     ],
+                //   ),
+                // ),
+                //  кнопка "забыли пароль"
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GestureDetector(
+                      onTap: _showResetPasswordDialog,
+                      child: const Text(
+                        'Забыли пароль?',
+                        style: TextStyle(
+                          color: Colors.blue,
+                          fontWeight: FontWeight.w600,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                // //кнопка для входа 
+                // //const SizedBox(height: 50),
+                // Padding(padding: EdgeInsets.only(top: 50),),
+
+                // MyButton(
+                //   text: 'войти',
+                //   onTap: signUserIn,
+                // ),
+
+                // //const SizedBox(height: 120),
+                // Padding(padding: EdgeInsets.only(top: 120),),
+                // Кнопка входа
+                  SizedBox(
+                    width: double.infinity,
+                    child: MyButton(
+                      text: 'Войти',
+                      onTap: signUserIn,
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                // взод через Google
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Divider(
+                          thickness: 0.5,
+                          //color: Colors.grey[400],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                        child: Text(
+                          'или войдите через',
+                          //style: TextStyle(color: Colors.grey[700]),
+                        ),
+                      ),
+                      Expanded(
+                        child: Divider(
+                          thickness: 0.5,
+                          //color: Colors.grey[400],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                //const SizedBox(height: 20),
+                Padding(padding: EdgeInsets.only(top: 20),),
+
+                // google + apple sign in buttons
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: const [
+                    // google button
+                    SquareTile(imagePath: 'lib/images/google.png'),
+
+                  ],
+                ),
+
+
+                //const SizedBox(height: 20),
+                Padding(padding: EdgeInsets.only(top: 20),),
+
+                // not a member? register now
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'забыли пароль?',
-                      //style: TextStyle(color: const Color.fromARGB(255, 51, 57, 56)),
+                      'еще не зарегистрированы?',
+                      //style: TextStyle(color: Colors.grey[700]),
+                    ),
+                    const SizedBox(width: 4),
+                    GestureDetector(
+                      onTap: widget.onTap,
+                      child: const Text(
+                      'зарегистрироваться',
+                      style: TextStyle(
+                        color: Colors.blue,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     ),
                   ],
                 ),
-              ),
+              ],
+            ),
 
-              //кнопка для входа 
-              //const SizedBox(height: 50),
-              Padding(padding: EdgeInsets.only(top: 50),),
-
-              MyButton(
-                text: 'войти',
-                onTap: signUserIn,
-              ),
-
-              //const SizedBox(height: 120),
-              Padding(padding: EdgeInsets.only(top: 120),),
-
-              // взод через Google
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.5,
-                        //color: Colors.grey[400],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                      child: Text(
-                        'или войдите через',
-                        //style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ),
-                    Expanded(
-                      child: Divider(
-                        thickness: 0.5,
-                        //color: Colors.grey[400],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              //const SizedBox(height: 20),
-              Padding(padding: EdgeInsets.only(top: 20),),
-
-              // google + apple sign in buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  // google button
-                  SquareTile(imagePath: 'lib/images/google.png'),
-
-                ],
-              ),
-
-
-              //const SizedBox(height: 20),
-              Padding(padding: EdgeInsets.only(top: 20),),
-
-              // not a member? register now
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'еще не зарегистрированы?',
-                    //style: TextStyle(color: Colors.grey[700]),
-                  ),
-                  const SizedBox(width: 4),
-                  GestureDetector(
-                    onTap: widget.onTap,
-                    child: const Text(
-                    'зарегистрироваться',
-                    style: TextStyle(
-                      color: Colors.blue,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
         ),
+        
+        
       ),
     );
   }

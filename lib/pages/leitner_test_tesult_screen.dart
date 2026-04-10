@@ -6,6 +6,7 @@ import 'package:coursework/theme/theme_providor.dart';
 import 'package:provider/provider.dart';
 import 'package:coursework/theme/dark_mode.dart';
 import 'package:coursework/theme/light_mode.dart';
+import 'package:coursework/components/module_model.dart';
 
 class LeitnerTestResultScreen extends StatelessWidget {
   final int correctCount;
@@ -15,6 +16,7 @@ class LeitnerTestResultScreen extends StatelessWidget {
   final String readinessLevel;
   final String leitnerRecommendation;
   final String moduleName;
+  final String moduleId; 
 
   const LeitnerTestResultScreen({
     Key? key,
@@ -25,6 +27,7 @@ class LeitnerTestResultScreen extends StatelessWidget {
     required this.readinessLevel,
     required this.leitnerRecommendation,
     required this.moduleName,
+    required this.moduleId,
   }) : super(key: key);
 
  @override
@@ -51,7 +54,7 @@ Widget build(BuildContext context) {
           //   size: 80,
           //   color: successRate >= 80 ? Colors.amber : Colors.blue,
           // ),
-          SizedBox(height: 24),
+          // SizedBox(height: 6),
           
           Text(
             readinessLevel,
@@ -61,7 +64,7 @@ Widget build(BuildContext context) {
               ),
             textAlign: TextAlign.center, 
           ),
-          SizedBox(height: 32),
+          SizedBox(height: 12),
           
           // Карточки с фиксированной шириной
           Container(
@@ -86,41 +89,121 @@ Widget build(BuildContext context) {
               ),
             ),
           ),
-          SizedBox(height: 32),
-          
-          Container(
-            width: double.infinity,
-            child: Card(
-              // color: Colors.blue[50],
-              color: colors.primaryContainer?.withOpacity(0.2),
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Text('Рекомендация Лейтнера:', 
-                      style: textStyles.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                        //  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(height: 12),
-                    Text(leitnerRecommendation, 
-                         style: textStyles.bodyLarge?.copyWith(
+
+          SizedBox(height: 16),  // НОВЫЙ БЛОК!
+            
+            // ПРОГРЕСС МОДУЛЯ
+            FutureBuilder<DocumentSnapshot>(
+              future: FirebaseFirestore.instance
+                  .collection('Users')
+                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                  .collection('modules')
+                  .doc(moduleId)
+                  .get(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return SizedBox(
+                    height: 80,
+                    child: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                
+                final module = ModuleModel.fromFirestore(snapshot.data!);
+                final progress = module.overallProgress;
+                
+                return Container(
+                  width: double.infinity,
+                  child: Card(
+                    color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
+                    child: Padding(
+                      padding: EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          Text(
+                            'Общий прогресс модуля',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey[300],
+                            valueColor: AlwaysStoppedAnimation(
+                              progress > 0.7 
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(context).colorScheme.tertiary,
+                            ),
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            '${(progress * 100).round()}%',
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Тестирование: ${module.leitnerSessions}/3 | Заучивание: ${module.testSessions}/3',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          SizedBox(height: 4),
+                          Text('Рекомендация Лейтнера:', 
+                          style: textStyles.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                          ),
+                              //  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                          SizedBox(height: 6),
+                          Text(leitnerRecommendation, 
+                          style: textStyles.bodyLarge?.copyWith(
                           color: colors.primary,
                         ),
                         //  style: TextStyle(fontSize: 16, color: Colors.blue[800]),
                          textAlign: TextAlign.center,) 
-                  ],
-                ),
-              ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
-          ),
-          SizedBox(height: 40),
+          // SizedBox(height: 16),
+          
+          // Container(
+          //   width: double.infinity,
+          //   child: Card(
+          //     // color: Colors.blue[50],
+          //     color: colors.primaryContainer?.withOpacity(0.2),
+          //     child: Padding(
+          //       padding: EdgeInsets.all(20),
+          //       child: Column(
+          //         children: [
+          //           Text('Рекомендация Лейтнера:', 
+          //             style: textStyles.titleMedium?.copyWith(
+          //               fontWeight: FontWeight.bold,
+          //             ),
+          //           ),
+          //               //  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          //           SizedBox(height: 6),
+          //           Text(leitnerRecommendation, 
+          //                style: textStyles.bodyLarge?.copyWith(
+          //                 color: colors.primary,
+          //               ),
+          //               //  style: TextStyle(fontSize: 16, color: Colors.blue[800]),
+          //                textAlign: TextAlign.center,) 
+          //         ],
+          //       ),
+          //     ),
+          //   ),
+          // ),
+          SizedBox(height: 20),
           
           SizedBox(
             width: double.infinity,
               child: ElevatedButton.icon(
-                icon: const Icon(Icons.arrow_back),
+                // icon: const Icon(Icons.arrow_back),
                 label: Text(
                   'Вернуться к модулю',
                   style: textStyles.titleMedium,
