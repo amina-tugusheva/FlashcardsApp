@@ -7,6 +7,7 @@ class ModuleModel {
   final String userId;
   final Timestamp createdAt;
   final int? cardsCount;
+  final int? savesCount;
   final bool? isPublic;
   final bool? isSaved;
   final String? sourceAuthorName; // для отображения имени автора в сохраненных модулях
@@ -23,6 +24,7 @@ class ModuleModel {
     required this.userId,
     required this.createdAt,
     this.cardsCount,
+    this.savesCount,
     this.isPublic,
     this.isSaved,
     this.sourceAuthorName,
@@ -38,6 +40,7 @@ class ModuleModel {
     
     // БЕЗОПАСНЫЕ значения по умолчанию
     final cardsCount = data['cardsCount'] ?? 0;
+    final savesCount = data['savesCount'] ?? 0;
     final cardsInBox5 = data['cardsInBox5'] ?? 0;
     final testSessionsRaw = data['testSessions'] ?? 0;
     final leitnerSessionsRaw = data['leitnerSessions'] ?? 0;
@@ -59,6 +62,7 @@ class ModuleModel {
       userId: data['userId'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
       cardsCount: data['cardsCount'],
+      savesCount: data['savesCount'],
       isPublic: data['isPublic'] ?? false,
       isSaved: data['isSaved'] ?? false,  
       sourceAuthorName: data['sourceAuthorName'] ?? '',
@@ -76,6 +80,7 @@ class ModuleModel {
       'userId': userId,
       'createdAt': createdAt,
       'cardsCount': cardsCount,
+      'savesCount': savesCount,
       'isPublic': isPublic ?? false,
       'isSaved': isSaved ?? false,
       'sourceAuthorName': sourceAuthorName,

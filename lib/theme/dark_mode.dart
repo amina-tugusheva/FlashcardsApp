@@ -1,21 +1,4 @@
 import 'package:flutter/material.dart';
-// import 'package:google_fonts/google_fonts.dart';
-
-// ThemeData darkMode = ThemeData(
-//   brightness: Brightness.dark,
-//   colorScheme: ColorScheme.dark(
-//     //background: Colors.green.shade900,
-//     primary: Colors.grey.shade600,
-//     secondary: Colors.grey.shade800,
-//     inversePrimary: Colors.grey.shade900,
-    
-
-//   ),
-//   textTheme: ThemeData.dark().textTheme.apply(
-//     bodyColor:  Colors.grey[200],
-//     displayColor: Colors.white,
-//   ),
-// );
 
 ThemeData darkMode = ThemeData(
   useMaterial3: true,
@@ -34,22 +17,7 @@ ThemeData darkMode = ThemeData(
     onSurface: Color(0xFFE8F5E8),    // текст
   ),
   
-  // // Шрифты 
-  // textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(
-  //   bodyColor: Color(0xFFE8F5E8),
-  //   displayColor: Colors.white,
-  //   bodySmall: GoogleFonts.inter(color: Color(0xFFB0BEC5)),
-  //   bodyMedium: GoogleFonts.inter(),
-  //   bodyLarge: GoogleFonts.poppins(fontWeight: FontWeight.w500),
-  //   titleSmall: GoogleFonts.inter(fontWeight: FontWeight.w600),
-  //   titleMedium: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-  //   titleLarge: GoogleFonts.poppins(fontWeight: FontWeight.bold),
-  //   headlineSmall: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: Colors.white),
-  //   headlineMedium: GoogleFonts.poppins(fontWeight: FontWeight.w800),
-  //   headlineLarge: GoogleFonts.poppins(fontWeight: FontWeight.w900),
-  // ),
-
-// ШРИФТЫ с кастомными настройками
+// ШРИФТЫ 
   textTheme: ThemeData.dark().textTheme.copyWith(
     bodySmall: TextStyle(
       fontSize: 12,

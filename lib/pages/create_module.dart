@@ -19,7 +19,7 @@ class _CreateModuleState extends State<CreateModule> {
   final currentUser = FirebaseAuth.instance.currentUser!;
   
   bool isPublic = true;
-  bool isLoading = false;  // Антидублирование!
+  bool isLoading = false;  // Антидублирование
   
   // Список карточек
   // List<Map<String, String>> cards = [];
@@ -28,7 +28,7 @@ class _CreateModuleState extends State<CreateModule> {
 
 @override
   void initState() {
-    super.initState();  // ПЕРВЫМ!
+    super.initState();  
     nameController = TextEditingController(text: widget.moduleName ?? '');
     descriptionController = TextEditingController();
 
@@ -126,7 +126,6 @@ class _CreateModuleState extends State<CreateModule> {
   Future<void> saveModule() async {
     if (isLoading) return;  // Блокировка дублей!
     if (widget.moduleId == null) {
-      // СОЗДАНИЕ — add новый модуль
       final name = nameController.text.trim();
       final validCards = getValidCards();
       
@@ -136,7 +135,7 @@ class _CreateModuleState extends State<CreateModule> {
         );
         return;
       }
-      setState(() => isLoading = true);  // Spinner!
+      setState(() => isLoading = true);  
 
       try {
         final moduleRef = await FirebaseFirestore.instance
@@ -190,7 +189,6 @@ class _CreateModuleState extends State<CreateModule> {
         );
       }
     } else {
-      //РЕДАКТИРОВАНИЕ — batch update 
       final name = nameController.text.trim();
       final cards = getValidCards();
       if (name.isEmpty || cards.isEmpty) return;
@@ -404,26 +402,7 @@ class _CreateModuleState extends State<CreateModule> {
             ),
           ),
 
-          // Фиксированная нижняя панель
-          // Positioned(
-          //   bottom: 0,
-          //   left: 0,
-          //   right: 0,
-          //   child: Container(
-          //     // color: Colors.white,
-          //     padding: EdgeInsets.all(20),
-          //     child: Column(
-          //       mainAxisSize: MainAxisSize.min,
-          //       children: [
-                  
-          //         ElevatedButton(
-          //           onPressed: saveModule,
-          //           child: Text(isPublic ? 'Создать публичный' : 'Создать приватный'),
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ),
+          
         ],
       ),
     );

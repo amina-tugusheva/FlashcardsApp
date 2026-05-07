@@ -4,9 +4,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'userCardsList.dart';
 import 'leitner_test_tesult_screen.dart';
 import 'dart:math';
-// import 'package:flutter/material.dart';
-// import 'package:cloud_firestore/cloud_firestore.dart';
-// import 'package:firebase_auth/firebase_auth.dart';
 import 'module_progress_service.dart';
 
 class LeitnerTestScreen extends StatefulWidget {
@@ -61,14 +58,13 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
   void _prepareChoices() {
   if (currentCard == null) return;
 
-  // используем ВСЮ исходную колоду widget.cards
+  // используем ВСЮ исходную колоду 
   final allOtherCards = widget.cards
       .where((card) => card.id != currentCard!.id)
       .toList();
   
   allOtherCards.shuffle(Random());
   
-  // Берем 3 случайных неправильных ответа ИЗ ВСЕЙ КОЛОДЫ
   final wrongTerms = allOtherCards.take(3).map((c) => c.term).toList();
     
     while (wrongTerms.length < 3) {
@@ -76,7 +72,6 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
           .map((c) => c.term));
     }
 
-    // Создаем полный список: 1 правильный термин + 3 неправильных
     List<String> choices = [currentCard!.term, ...wrongTerms];
     choices.shuffle(Random());
     
@@ -144,7 +139,6 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
   }
 
   void _finishTest() async {
-    // ✅ +1 сессия TestScreen!
     await FirebaseFirestore.instance
         .collection('Users')
         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -152,7 +146,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
         .doc(widget.moduleId)
         .update({'leitnerSessions': FieldValue.increment(1)});
     
-    // ✅ Обновляем общую статистику
+    // Обновляем общую статистику
     await ModuleProgressService.updateModuleStats(widget.moduleId);
 
     final readinessLevel = _calculateReadiness();
@@ -275,9 +269,9 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 10),
-
-            Container(
-              height: 120,  // Было 250 → теперь 120 (в 2 раза меньше)
+            if (hasImage) ...[
+              Container(
+              height: 120,  
               decoration: BoxDecoration(
                 color: Colors.grey[100],
                 borderRadius: BorderRadius.circular(16),
@@ -310,6 +304,9 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
                 ),
               ),
             ),
+            ],
+
+            
             
             SizedBox(height: 28),
 
@@ -326,13 +323,13 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
                     final isCorrectAnswer = shuffledChoices[index] == currentCard!.term;
 
                     if (isSelected && isCorrectAnswer) {
-                      cardColor = Colors.green[100];
+                      cardColor = const Color.fromARGB(200, 70, 200, 90);
                       icon = Icons.check_circle;
                     } else if (isSelected && !isCorrectAnswer) {
-                      cardColor = Colors.red[100];
+                      cardColor = const Color.fromARGB(200, 255, 60, 50);
                       icon = Icons.close;
                     } else if (!isSelected && isCorrectAnswer) {
-                      cardColor = Colors.green[50];
+                      cardColor = const Color.fromARGB(200, 70, 200, 90);
                       icon = Icons.check_circle_outline;
                     }
                   }

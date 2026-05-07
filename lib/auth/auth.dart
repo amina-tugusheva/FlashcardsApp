@@ -12,19 +12,6 @@ class AuthPage extends StatelessWidget {
   Widget build(BuildContext context) {
     
     return Scaffold(
-      // body: StreamBuilder(stream: FirebaseAuth.instance.authStateChanges(),
-      //  builder: (context, snapshop) {
-      //   // пользователь уже зарегистрирован 
-      //   if ( snapshop.hasData) {
-      //     return const HomePage();
-      //   }
-      //   // пользователь еще не зарегистрирован 
-      //   else {
-      //     return const LogOrReg();
-      //   }
-
-      //  },
-      // ),
       body: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
@@ -35,19 +22,16 @@ class AuthPage extends StatelessWidget {
 
           User user = snapshot.data!;
 
-          // АВТОРИЗОВАН + EMAIL ПОДТВЕРЖДЁН → HomePage
+          // АВТОРИЗОВАН + EMAIL ПОДТВЕРЖДЁН 
           if (user.emailVerified) {
             return const HomePage();
           }
 
-          // АВТОРИЗОВАН, НО EMAIL НЕ ПОДТВЕРЖДЁН → EmailVerificationPage
+          // АВТОРИЗОВАН, НО EMAIL НЕ ПОДТВЕРЖДЁН 
           return const EmailVerificationPage();
         },
       ),
 
     );
-    
-
-
   }
 }

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'auth/log_or_reg.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async{
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,9 @@ void main() async{
   ); */
 ///
   await Firebase.initializeApp(options:DefaultFirebaseOptions.currentPlatform);
+  // ВКЛЮЧАЕМ ОФФЛАЙН (Android/iOS — по умолчанию, web — вручную)
+  // await FirebaseFirestore.instance.enablePersistence();
+  
   runApp(
     //const MyApp()
     ChangeNotifierProvider(

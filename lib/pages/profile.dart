@@ -1,7 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:coursework/components/my_button.dart';
-import 'package:coursework/components/custom_button.dart';
-import 'package:coursework/components/text_box.dart';
 import 'package:coursework/theme/theme_providor.dart';
 import 'package:flutter/material.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
@@ -18,51 +15,9 @@ class ProfilePage extends StatefulWidget {
 
 
 class _ProfilePageState extends State<ProfilePage> {
-  // пользователь
   final currentUser = FirebaseAuth.instance.currentUser!;
-
-  //все пользователи 
   final usersCollection = FirebaseFirestore.instance.collection("Users");
 
-  // // функция редактрования имени пользоателя 
-  // Future<void> editField(String field) async{
-  //   String newValue = "";
-  //   await showDialog(
-  //     context: context, 
-  //     builder: (context) => AlertDialog(
-  //     title: Text("редактировать " + field),
-  //     content: TextField(
-  //       autofocus: true,
-  //       decoration: InputDecoration(
-  //         hintText: "введите новое $field",
-  //         hintStyle: TextStyle(color:Colors.grey),
-  //       ),
-  //       onChanged: (value){
-  //         newValue = value;
-  //       },
-  //     ),
-  //     actions: [
-  //       TextButton(
-          
-  //         child: Text('отменить'),
-  //         onPressed: () => Navigator.pop(context), 
-  //       ),
-
-  //       TextButton(
-          
-  //         child: Text('сохранить'),
-  //         onPressed: () => Navigator.of(context).pop(newValue), 
-  //       ),
-  //     ],
-  //     )
-  //   );
-
-  //   //обновить Firestore
-  //   if(newValue.trim().length > 0) {
-  //     await usersCollection.doc(currentUser.uid).update({field:newValue});
-  //   }
-
-  // }
   Future<void> editField(String field) async {
   final TextEditingController controller = TextEditingController();
   
@@ -118,15 +73,15 @@ class _ProfilePageState extends State<ProfilePage> {
   );
 }
 
-  // СМЕНА ПАРОЛЯ
   Future<void> changePassword() async {
-    final currentPassController = TextEditingController();
-    final newPassController = TextEditingController();
-    final confirmPassController = TextEditingController();
+  final currentPassController = TextEditingController();
+  final newPassController = TextEditingController();
+  final confirmPassController = TextEditingController();
 
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
+  await showDialog(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) => AlertDialog(
         title: const Text('Сменить пароль'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -134,156 +89,216 @@ class _ProfilePageState extends State<ProfilePage> {
             TextField(
               controller: currentPassController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Текущий пароль',
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Текущий пароль *',
+                errorText: currentPassController.text.isEmpty 
+                    ? 'Обязательно' 
+                    : null,
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
+            
             TextField(
               controller: newPassController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Новый пароль (6+ символов)',
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Новый пароль *',
+                errorText: _getPasswordError(newPassController.text),
                 border: OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
+            
             TextField(
               controller: confirmPassController,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Подтвердите новый пароль',
+              onChanged: (_) => setState(() {}),
+              decoration: InputDecoration(
+                labelText: 'Подтвердите пароль *',
+                errorText: _getConfirmError(newPassController.text, confirmPassController.text),
                 border: OutlineInputBorder(),
               ),
             ),
           ],
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Отмена')),
           ElevatedButton(
-            onPressed: () async {
-              String currentPass = currentPassController.text;
-              String newPass = newPassController.text;
-              String confirmPass = confirmPassController.text;
-
-              if (newPass.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Пароль должен быть 6+ символов')),
-                );
-                return;
-              }
-
-              if (newPass != confirmPass) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Пароли не совпадают')),
-                );
-                return;
-              }
-
-              try {
-                // Ре-аутентификация
-                await currentUser.reauthenticateWithCredential(
-                  EmailAuthProvider.credential(
-                    email: currentUser.email!,
-                    password: currentPass,
-                  ),
-                );
-
-                // Смена пароля
-                await currentUser.updatePassword(newPass);
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Пароль успешно изменён'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ошибка: $e')),
-                );
-              }
-            },
+            onPressed: _isFormValid(currentPassController.text, newPassController.text, confirmPassController.text)
+                ? () => _changePasswordConfirmed(context, currentPassController, newPassController)
+                : null,
             child: const Text('Сменить'),
           ),
         ],
       ),
+    ),
+  );
+}
+
+bool _isCurrentPasswordValid(String currentPass) => currentPass.isNotEmpty;
+
+bool _isNewPasswordValid(String newPass) {
+  return newPass.length >= 6 &&
+         RegExp(r'[a-zA-Z]').hasMatch(newPass) &&  // Буквы
+         RegExp(r'[0-9]').hasMatch(newPass);       // Цифры
+}
+
+String? _getPasswordError(String newPass) {
+  if (newPass.isEmpty) return null;
+  if (newPass.length < 6) return 'Минимум 6 символов';
+  if (!RegExp(r'[a-zA-Z]').hasMatch(newPass)) return 'Добавьте буквы';
+  if (!RegExp(r'[0-9]').hasMatch(newPass)) return 'Добавьте цифры';
+  return null;
+}
+
+String? _getConfirmError(String newPass, String confirmPass) {
+  if (confirmPass.isEmpty) return null;
+  if (newPass != confirmPass) return 'Пароли не совпадают';
+  return null;
+}
+
+bool _isFormValid(String current, String newPass, String confirm) {
+  return _isCurrentPasswordValid(current) &&
+         _isNewPasswordValid(newPass) &&
+         newPass == confirm &&
+         newPass.isNotEmpty;
+}
+
+Widget _getFormStatus(String current, String newPass, String confirm) {
+  final isValid = _isFormValid(current, newPass, confirm);
+  return Container(
+    padding: EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: isValid ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: isValid ? Colors.green : Colors.red),
+    ),
+    child: Row(
+      children: [
+        Icon(isValid ? Icons.check_circle : Icons.error, 
+             color: isValid ? Colors.green : Colors.red),
+        SizedBox(width: 8),
+        Text(
+          isValid 
+            ? 'Готово для смены пароля' 
+            : 'Заполните все поля корректно',
+          style: TextStyle(
+            color: isValid ? Colors.green[700] : Colors.red[700],
+            fontWeight: isValid ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Future<void> _changePasswordConfirmed(BuildContext context,
+    TextEditingController current, TextEditingController newPass) async {
+  Navigator.pop(context);
+
+  try {
+    await FirebaseAuth.instance.currentUser!.reauthenticateWithCredential(
+      EmailAuthProvider.credential(
+        email: FirebaseAuth.instance.currentUser!.email!,
+        password: current.text,
+      ),
+    );
+    await FirebaseAuth.instance.currentUser!.updatePassword(newPass.text);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Пароль изменён!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$e')),
     );
   }
+}
 
   // УДАЛЕНИЕ ПРОФИЛЯ
   Future<void> deleteAccount() async {
-    final passwordController = TextEditingController();
+  final passwordController = TextEditingController();
 
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Удалить аккаунт'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Это действие НЕОБРАТИМО!\nВсе данные будут удалены.',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Введите пароль для подтверждения',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+  await showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Удалить аккаунт'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Это действие НЕОБРАТИМО!\nВсе данные будут удалены.',
+            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            onPressed: () async {
-              try {
-                // Ре-аутентификация
-                await currentUser.reauthenticateWithCredential(
-                  EmailAuthProvider.credential(
-                    email: currentUser.email!,
-                    password: passwordController.text,
-                  ),
-                );
-
-                // Удаляем Firestore данные
-                await usersCollection.doc(currentUser.uid).delete();
-
-                // Удаляем аккаунт
-                await currentUser.delete();
-
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Аккаунт удалён'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Ошибка: $e')),
-                );
-              }
-            },
-            child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Введите пароль для подтверждения',
+              border: OutlineInputBorder(),
+            ),
           ),
         ],
       ),
-    );
-  }
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () async {
+            try {
+              await currentUser.reauthenticateWithCredential(
+                EmailAuthProvider.credential(
+                  email: currentUser.email!,
+                  password: passwordController.text,
+                ),
+              );
+
+              await usersCollection.doc(currentUser.uid).delete();
+              await currentUser.delete();
+
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Аккаунт удалён'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            } catch (e) {
+              String errorMsg;
+              if (e.toString().contains('wrong-password')) {
+                errorMsg = 'Неверный пароль';
+              } else if (e.toString().contains('network')) {
+                errorMsg = 'Нет интернета';
+              } else if (e.toString().contains('requires-recent-login')) {
+                errorMsg = 'Войдите заново';
+              } else {
+                errorMsg = 'Ошибка: неверный пароль';
+              }
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(errorMsg),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          child: const Text('Удалить', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
 
   //выход
   Future<void> logout () async {
@@ -313,6 +328,19 @@ class _ProfilePageState extends State<ProfilePage> {
       },
     );
   }
+
+  String _getEmojiByName(String name) {
+  
+  final emojis = [
+    '😀', '😂', '🤓', '😎', '🥳', '🤩', '🦊', '🥰',
+    '😇', '🤠', '😈', '👻', '👽', '🤖', '🎃', '🦄',
+    '🐱', '🐶', '🐭', '🐹', '🐰', '😍', '🐻', '🐼',
+    '🚀', '✈️', '🚗', '🚲', '🎸', '🎹', '🎤', '🎨',
+  ];
+  
+  final index = name.toLowerCase().hashCode.abs() % emojis.length;
+  return emojis[index];
+}
   
 
 
@@ -348,52 +376,59 @@ class _ProfilePageState extends State<ProfilePage> {
               //   onPressed: () => editField('имя пользователя'),
               // ),
               Center(
-                child: Column(
-                  children: [
-                    Container(
-                      width: 100,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [scheme.primary, scheme.primary.withOpacity(0.7)],
-                        ),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 20,
-                            offset: Offset(0, 8),
-                          ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          scheme.primary, 
+                          scheme.primary.withOpacity(0.7)
                         ],
                       ),
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getEmojiByName(userName),  
+                        style: const TextStyle(
+                          fontSize: 50,  
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    SizedBox(height: 16),
-                    Text(
-                      userName,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    userName,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.onSurface,
                     ),
-                    SizedBox(height: 4),
-                    Text(
-                      email,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
 
-              const SizedBox(height: 32),
+              // const SizedBox(height: 32),
 
-              // Блок "статистика"
+              // // Блок "статистика"
               // Text(
               //   'Обучение',
               //   style: Theme.of(context).textTheme.titleMedium,
@@ -406,7 +441,7 @@ class _ProfilePageState extends State<ProfilePage> {
               //   onPressed: () {
               //     Navigator.push(
               //       context,
-              //       MaterialPageRoute(builder: (context) => TestHistoryPage()),
+              //       MaterialPageRoute(builder: (context) => HistoryPage()),
               //     );
               //   },
               // ),
@@ -430,7 +465,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: Column(
                     children: [
                       // Text(
-                      //   '📊 Обучение',
+                      //   'Обучение',
                       //   style: theme.textTheme.titleLarge?.copyWith(
                       //     fontWeight: FontWeight.w600,
                       //   ),
@@ -449,7 +484,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
               const SizedBox(height: 32),
 
-              // Блок "настройки" (отдельный, скролл общий у ListView)
               Center(
                 child: 
                 Text(

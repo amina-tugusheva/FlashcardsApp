@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'userCardsList.dart';
-// import 'package:coursework/components/card_model.dart';
 
 //import 'package:coursework/components/card_model.dart';
 // Виджет для отображения одной карточки

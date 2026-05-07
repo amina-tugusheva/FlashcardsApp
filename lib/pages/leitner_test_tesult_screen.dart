@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'userCardsList.dart';
-import 'package:coursework/theme/theme_providor.dart';
-import 'package:provider/provider.dart';
-import 'package:coursework/theme/dark_mode.dart';
-import 'package:coursework/theme/light_mode.dart';
 import 'package:coursework/components/module_model.dart';
 
 class LeitnerTestResultScreen extends StatelessWidget {
@@ -49,13 +44,6 @@ Widget build(BuildContext context) {
         mainAxisAlignment: MainAxisAlignment.center,  
         crossAxisAlignment: CrossAxisAlignment.center, 
         children: [
-          // Icon(
-          //   successRate >= 80 ? Icons.emoji_events : Icons.school,
-          //   size: 80,
-          //   color: successRate >= 80 ? Colors.amber : Colors.blue,
-          // ),
-          // SizedBox(height: 6),
-          
           Text(
             readinessLevel,
             // style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
@@ -66,7 +54,6 @@ Widget build(BuildContext context) {
           ),
           SizedBox(height: 12),
           
-          // Карточки с фиксированной шириной
           Container(
             width: double.infinity,
             child: Card(
@@ -206,7 +193,11 @@ Widget build(BuildContext context) {
                 // icon: const Icon(Icons.arrow_back),
                 label: Text(
                   'Вернуться к модулю',
-                  style: textStyles.titleMedium,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
                 ),
                 onPressed: () => Navigator.pop(context),
               ),

@@ -1,3 +1,5 @@
+// страница не используется 
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -188,7 +190,7 @@ class _CreateCardScreenState extends State<CreateCardScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '✅ Карточка сохранена${_imageFile != null ? ' с изображением' : ''}'
+            'Карточка сохранена${_imageFile != null ? ' с изображением' : ''}'
           ),
           backgroundColor: Colors.green,
         ),

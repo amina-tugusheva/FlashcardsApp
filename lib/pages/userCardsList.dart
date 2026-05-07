@@ -7,13 +7,6 @@ import 'moduleListPage.dart';
 import 'create_module.dart';
 import "leitner_test_screen.dart";
 
-
-import 'createModuleScreen.dart'; 
-import 'test_result_screen.dart';
-import 'autogeneratecards_screen.dart';
-import 'createCardScreen.dart';
-import 'edit_card_screen.dart';
-import 'package:coursework/components/module_model.dart';
 //import 'package:coursework/components/card_model.dart';
 // Модель карточки
 class CardModel {
@@ -191,7 +184,7 @@ class _UserCardsListState extends State<UserCardsList> {
       .collection('modules')
       .doc();
 
-  // 1. ПРОФИЛЬ АВТОРА
+  // ПРОФИЛЬ АВТОРА
   final authorSnapshot = await FirebaseFirestore.instance
       .collection('Users')
       .doc(widget.authorId)
@@ -202,7 +195,7 @@ class _UserCardsListState extends State<UserCardsList> {
     authorName = authorSnapshot.data()!['имя пользователя'] ?? 'Без имени';
   }
 
-  // 2. ОПИСАНИЕ ИЗ МОДУЛЯ АВТОРА!
+  // ОПИСАНИЕ ИЗ МОДУЛЯ АВТОРА
   final moduleSnapshot = await FirebaseFirestore.instance
       .collection('Users')
       .doc(widget.authorId)
@@ -218,7 +211,7 @@ class _UserCardsListState extends State<UserCardsList> {
   print('🔍 AUTHOR: $authorName');
   print('🔍 MODULE_DESC: $moduleDescription');
 
-    // 2. Метаданные модуля
+    // Метаданные модуля
     await newModuleRef.set({
       'name': widget.moduleName,
       'description': moduleDescription,  
@@ -229,9 +222,10 @@ class _UserCardsListState extends State<UserCardsList> {
       'sourceAuthorId': widget.authorId,
       'isSaved': true,
       'sourceAuthorName': authorName,
+      'savesCount': 0,
     });
 
-    // 3. Копируем все карточки
+    // Копируем все карточки
     for (final cardDoc in snapshot.docs) {
       final cardData = cardDoc.data() as Map<String, dynamic>;
       await FirebaseFirestore.instance
@@ -246,8 +240,21 @@ class _UserCardsListState extends State<UserCardsList> {
         'imageUrl': cardData['imageUrl'] ?? '',
         'box': 1, // Сброс Leitner
         'createdAt': FieldValue.serverTimestamp(),
+        'sessionAttempts': 0,
       });
     }
+     // УВЕЛИЧИВАЕМ ПОПУЛЯРНОСТЬ ОРИГИНАЛА
+    await FirebaseFirestore.instance
+        .collection('Users')
+        .doc(widget.authorId) 
+        .collection('modules')
+        .doc(widget.moduleId) 
+        .update({
+      'savesCount': FieldValue.increment(1),  // +1 сохранение
+    }).catchError((error) {
+      print('Не удалось обновить savesCount: $error');
+      // Не критично — продолжаем
+    });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -257,7 +264,7 @@ class _UserCardsListState extends State<UserCardsList> {
           action: SnackBarAction(
             label: 'Открыть',
             onPressed: () {
-              Navigator.pop(context); // Закрыть текущий экран
+              Navigator.pop(context); 
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -284,7 +291,6 @@ class _UserCardsListState extends State<UserCardsList> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // КНОПКА СОХРАНЕНИЯ (только для чужих)
             if (widget.isPublicStudy) ...[
               ListTile(
                 leading: Icon(Icons.download, color: Colors.green),
@@ -298,7 +304,6 @@ class _UserCardsListState extends State<UserCardsList> {
               Divider(),
             ],
             if (!widget.isPublicStudy) ...[
-              // Редактировать модуль
               ListTile(
                 title: Text('Редактировать модуль', style: Theme.of(context).textTheme.titleMedium),
                 subtitle: Text('Изменить название, описание и карточки'),
@@ -358,37 +363,7 @@ class _UserCardsListState extends State<UserCardsList> {
         
         
       actions: [
-        // Кнопка с тремя точками
-        // PopupMenuButton<String>(
-        //   icon: Icon(Icons.more_vert),
-        //   onSelected: (value) {
-        //     if (value == 'delete_module') {
-        //       _deleteModule();
-        //     } else if (value == 'edit_module') {
-        //       // добавить переход на страниццу редактированаия 
-        //     }
-        //   },
-        //   itemBuilder: (context) => [
-        //     PopupMenuItem(
-        //       value: 'edit_module',
-        //       child: Row(
-        //         children: [
-        //           SizedBox(width: 12),
-        //           Text('Редактировать модуль'),
-        //         ],
-        //       ),
-        //     ),
-        //     PopupMenuItem(
-        //       value: 'delete_module',
-        //       child: Row(
-        //         children: [
-        //           SizedBox(width: 12),
-        //           Text('Удалить модуль'),
-        //         ],
-        //       ),
-        //     ),
-        //   ],
-        // ),
+        
         IconButton(
           icon: Icon(Icons.more_vert),
           onPressed: () => _showModuleActionsSheet(context),
@@ -407,160 +382,25 @@ class _UserCardsListState extends State<UserCardsList> {
               children: [
                 // Кнопка "Карточки"
                 ElevatedButton(
-                  //     onPressed: () async {
-                  //   // Получение карточек из Firestore для текущего пользователя
-                  //   final snapshot = await FirebaseFirestore.instance
-                  //       .collection('Users')
-                  //       .doc(currentUser.uid)
-                  //       .collection('modules')
-                  //       .doc(widget.moduleId)                 
-                  //       .collection('user_cards')
-                  //       .get();
-
-                  //   final cards = snapshot.docs.map((doc) {
-                  //     final data = doc.data();
-                  //     return CardModel(
-                  //       term: data['term'] ?? '',
-                  //       definition: data['definition'] ?? '',
-                  //       imageUrl: data['imageUrl'] ?? '', 
-
-                  //       id: doc.id,
-                  //       box: data['box'] ?? 1,
-                  //       nextReview: data['nextReview'] != null
-                  //         ? (data['nextReview'] as Timestamp).toDate()
-                  //         : null,
-                        
-                  //     );
-                  //   }).toList();
-
-                  //   if (cards.isEmpty) {
-                  //     ScaffoldMessenger.of(context).showSnackBar(
-                  //       SnackBar(content: Text('Нет карточек для обучения')),
-                  //     );
-                  //     return;
-                  //   }
-                  //   // Переход на экран обучения, передаем список карточек
-                  //   Navigator.push(
-                  //     context,
-                  //     MaterialPageRoute(
-                  //       builder: (context) => FlashCardsScreen(cards: cards),
-                  //     ),
-                  //   );
-                  // },
-                  // child: Text('Просмотр'),
-                  // // style: ElevatedButton.styleFrom(minimumSize: Size(100, 40)),
                 onPressed: _goToFlashCards, child: Text('Просмотр')),
 
                 // Кнопка "Тестирование"
                 ElevatedButton(
-                  //     onPressed: () async {
-                  //   // Получение карточек из Firestore для текущего пользователя
-                  //   final snapshot = await FirebaseFirestore.instance
-                  //       .collection('Users')
-                  //       .doc(currentUser.uid)
-                  //       .collection('modules')
-                  //       .doc(widget.moduleId)                 
-                  //       .collection('user_cards')
-                  //       .get();
-
-                  //   final cards = snapshot.docs.map((doc) {
-                  //     final data = doc.data();
-                  //     return CardModel(
-                  //       term: data['term'] ?? '',
-                  //       definition: data['definition'] ?? '',
-                  //       imageUrl: data['imageUrl'] ?? '', 
-
-                  //       id: doc.id,
-                  //       box: data['box'] ?? 1,
-                  //       nextReview: data['nextReview'] != null
-                  //         ? (data['nextReview'] as Timestamp).toDate()
-                  //         : null,
-                        
-                  //     );
-                  //   }).toList();
-
-                  //   if (cards.isEmpty) {
-                  //     ScaffoldMessenger.of(context).showSnackBar(
-                  //       SnackBar(content: Text('Нет карточек для обучения')),
-                  //     );
-                  //     return;
-                  //   }
-                  //   // Переход на экран обучения, передаем список карточек
-                  //   Navigator.push(
-                  //     context,
-                  //     MaterialPageRoute(
-                        
-                  //       builder: (context) => LeitnerTestScreen(
-                  //         moduleId: widget.moduleId,
-                  //         moduleName: widget.moduleName,
-                  //         cards: cards,
-                  //       ),
-                        
-                  //     ),
-                  //   );
-                  // },
-                  // child: Text('Тест'),
-                  // style: ElevatedButton.styleFrom(minimumSize: Size(120, 40)),
                   onPressed: _goToTest, child: Text('Тест')
                 ),
 
                 // Кнопка "Обучение"
                 ElevatedButton(
-                  //     onPressed: () async {
-                  //       // Получение карточек из Firestore для текущего пользователя
-                  //       final snapshot = await FirebaseFirestore.instance
-                  //           .collection('Users')
-                  //           .doc(currentUser.uid)
-                  //           .collection('modules')
-                  //           .doc(widget.moduleId)                 
-                  //           .collection('user_cards')
-                  //           .get();
-
-                  //       final cards = snapshot.docs.map((doc) {
-                  //         final data = doc.data();
-                  //         return CardModel(
-                  //           term: data['term'] ?? '',
-                  //           definition: data['definition'] ?? '',
-                  //           imageUrl: data['imageUrl'] ?? '', 
-
-                  //           id: doc.id,
-                  //           box: data['box'] ?? 1,
-                  //           nextReview: data['nextReview'] != null
-                  //             ? (data['nextReview'] as Timestamp).toDate()
-                  //             : null,
-                            
-                  //         );
-                  //       }).toList();
-
-                  //       if (cards.isEmpty) {
-                  //         ScaffoldMessenger.of(context).showSnackBar(
-                  //           SnackBar(content: Text('Нет карточек для обучения')),
-                  //         );
-                  //         return;
-                  //       }
-                  //       // Переход на экран обучения, передаем список карточек
-                  //       Navigator.push(
-                  //         context,
-                  //         MaterialPageRoute(
-                  //           builder: (context) => TestScreen(cards: cards, 
-                  //           // moduleName: moduleName, 
-                  //           moduleId: widget.moduleId
-                  //           ),
-                  //         ),
-                  //       );
-                  //     },
-                  // child: Text('Проверка'),
-                  // style: ElevatedButton.styleFrom(minimumSize: Size(100, 40)),
                   onPressed: _goToCheck, child: Text('Проверка')
                 ),
               ],
             ),
           ),
-          // Список карточек внизу, занимает остаток экрана
+          // Список карточек
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               // stream: cardsStream,
-              stream: getCardsStream(), // ✅ Универсальный стрим!
+              stream: getCardsStream(), 
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Ошибка загрузки данных'));
@@ -613,71 +453,6 @@ class _UserCardsListState extends State<UserCardsList> {
                             ),
                           ],
                         ),
-                        // trailing: Row(
-                        //   mainAxisSize: MainAxisSize.min,
-                        //   children: [
-                        //     IconButton(
-                        //       icon: Icon(Icons.edit, color: Colors.blue),
-                        //       tooltip: 'Редактировать карточку',
-                        //       onPressed: () { // логика редактирования карточки 
-                        //         Navigator.push(
-                        //           context,
-                        //           MaterialPageRoute(
-                        //             builder: (context) => EditCardScreen(
-                        //               moduleId: widget.moduleId,
-                        //               cardId: cardDoc.id,
-                        //               initialTerm: cardData['term'] ?? '',
-                        //               initialDefinition: cardData['definition'] ?? '',
-                        //             ),
-                        //           ),
-                        //         );
-                                
-                        //       },
-                        //     ),
-                        //     IconButton(
-                        //       icon: Icon(Icons.delete),
-                        //       tooltip: 'Удалить карточку',
-                        //       onPressed: () async {
-                        //         final shouldDelete = await showDialog<bool>(
-                        //           context: context,
-                        //           builder: (context) => AlertDialog(
-                        //             title: Text('Удалить карточку?'),
-                        //             content: Text(
-                        //                 'Вы уверены, что хотите удалить эту карточку?'),
-                        //             actions: [
-                        //               TextButton(
-                        //                 onPressed: () =>
-                        //                     Navigator.pop(context, false),
-                        //                 child: Text('Отмена'),
-                        //               ),
-                        //               TextButton(
-                        //                 onPressed: () =>
-                        //                     Navigator.pop(context, true),
-                        //                 child: Text(
-                        //                   'Удалить',
-                        //                   style: TextStyle(color: Colors.red),
-                        //                 ),
-                        //               ),
-                        //             ],
-                        //           ),
-                        //         );
-                        //         if (shouldDelete == true) {
-                        //           await FirebaseFirestore.instance
-                        //               .collection('Users')
-                        //               .doc(currentUser.uid)
-                        //               .collection('modules')
-                        //               .doc(widget.moduleId)
-                        //               .collection('user_cards')
-                        //               .doc(cardDoc.id)
-                        //               .delete();
-                        //           ScaffoldMessenger.of(context).showSnackBar(
-                        //             SnackBar(content: Text('Карточка удалена')),
-                        //           );
-                        //         }
-                        //       },
-                        //     ),
-                        //   ],
-                        // ),
                       ),
                     );
                   },
@@ -687,83 +462,7 @@ class _UserCardsListState extends State<UserCardsList> {
           ),
         ],
       ),
-
-      // // floatingActionButton: FloatingActionButton(
-      // //   onPressed: () {
-      // //     Navigator.push(
-      // //       context,
-      // //       MaterialPageRoute(
-      // //         builder: (context) => CreateCardScreen(moduleId: moduleId),
-      // //       ),
-      // //     );
-      // //   },
-      // //   child: Icon(Icons.add),
-      // //   tooltip: 'Создать новую карточку',
-      // // ),
-
-
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     showModalBottomSheet(
-      //       context: context,
-      //       builder: (BuildContext ctx) {
-      //         return SafeArea(
-      //           child: Wrap(
-      //             children: [
-      //               ListTile(
-      //                 leading: Icon(Icons.auto_fix_high),
-      //                 title: Text('Сгенерировать карточки автоматически'),
-      //                 onTap: () {
-      //                   Navigator.pop(ctx);
-      //                   Navigator.push(
-      //                     context,
-      //                     MaterialPageRoute(
-      //                       builder: (context) => AutoGenerateCardsScreen(moduleId: widget.moduleId),
-      //                     ),
-      //                   );
-      //                 },
-      //               ),
-      //               ListTile(
-      //                 leading: Icon(Icons.edit),
-      //                 title: Text('Заполнить вручную'),
-      //                 onTap: () {
-      //                   Navigator.pop(ctx);
-      //                   Navigator.push(
-      //                     context,
-      //                     MaterialPageRoute(
-      //                       builder: (context) => CreateCardScreen(moduleId: widget.moduleId),
-      //                     ),
-      //                   );
-      //                 },
-      //               ),
-      //             ],
-      //           ),
-      //         );
-      //       },
-      //     );
-      //   },
-      //   child: Icon(Icons.add),
-      //   tooltip: 'Добавить карточки',
-      // ),
-      // floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }
 
-
-// class UserCardsList extends StatelessWidget {
-
-//   final String moduleId;
-//   final String moduleName; // Для отображения в AppBar
-
-//   final currentUser = FirebaseAuth.instance.currentUser!;
-
-//   UserCardsList({Key? key, 
-//   required this.moduleId,
-//   required this.moduleName
-
-//   }) : super(key: key);
-  
-
-  
-// }

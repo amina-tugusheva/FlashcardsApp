@@ -1,154 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'userCardsList.dart';
-import 'test_result_screen.dart';
-import 'createModuleScreen.dart'; 
-import 'moduleListPage.dart';
-import 'createCardScreen.dart';
 
+import 'package:coursework/components/module_model.dart'; 
 
-import 'package:coursework/components/module_model.dart'; // import ModuleModel
-
-
-// class TestScreen extends StatefulWidget {
-//   final String moduleId;
-//   // final String moduleName;
-//   final List<CardModel> cards;
-
-//   const TestScreen({
-//     Key? key,
-//     required this.moduleId,
-//     // required this.moduleName,
-//     required this.cards,
-//   }) : super(key: key);
-
-//   @override
-//   _TestScreenState createState() => _TestScreenState();
-// }
-
-// class _TestScreenState extends State<TestScreen> {
-//   int currentIndex = 0;
-//   int correctCount = 0;
-//   List<bool> results = [];
-//   TextEditingController answerController = TextEditingController();
-  
-//   @override
-//   void dispose() {
-//     answerController.dispose();
-//     super.dispose();
-//   }
-
-//   void checkAnswer() {
-//     final card = widget.cards[currentIndex];
-//     final userAnswer = answerController.text.trim().toLowerCase();
-//     final correctAnswer = card.definition.trim().toLowerCase();
-
-//     bool isCorrect = userAnswer == correctAnswer;
-
-//     if (isCorrect) {
-//       correctCount++;
-//     }
-//     results.add(isCorrect);
-
-//     answerController.clear();
-
-//     if (currentIndex + 1 >= widget.cards.length) {
-//       // Сохраняем результаты перед переходом
-//       saveTestResult();
-//       // Переходим на экран с результатами
-//       Navigator.pushReplacement(
-//         context,
-//         MaterialPageRoute(
-//           builder: (context) => TestResultScreen(
-//             correctCount: correctCount,
-//             total: widget.cards.length,
-//             results: results,
-//             // moduleName: widget.moduleName,
-//           ),
-//         ),
-//       );
-//     } else {
-//       setState(() {
-//         currentIndex++;
-//       });
-//     }
-//   }
-
-//   Future<void> saveTestResult() async {
-//     final currentUser = FirebaseAuth.instance.currentUser!;
-//     await FirebaseFirestore.instance
-//         .collection('Users')
-//         .doc(currentUser.uid)
-//         .collection('test_history')
-//         .add({
-//       'moduleId': widget.moduleId,
-//       // 'moduleName': widget.moduleName,
-//       'timestamp': FieldValue.serverTimestamp(),
-//       'correct': correctCount,
-//       'total': widget.cards.length,
-//       // Можно добавить дополнительные данные (например, подробности ответов)
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     if (widget.cards.isEmpty) {
-//       return Scaffold(
-//         appBar: AppBar(title: Text('Заучивание')),
-//         body: Center(child: Text('В этом модуле нет карточек для тестирования')),
-//       );
-//     }
-
-//     final currentCard = widget.cards[currentIndex];
-
-//     return Scaffold(
-//       appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-//         title: Text('Заучивание')),
-//       body: Padding(
-//         padding: const EdgeInsets.all(24.0),
-//         child: Column(
-//           crossAxisAlignment: CrossAxisAlignment.stretch,
-//           children: [
-//             Text(
-//               'Вопрос ${currentIndex + 1} из ${widget.cards.length}',
-//               style: TextStyle(fontSize: 18),
-//               textAlign: TextAlign.center,
-//             ),
-//             const SizedBox(height: 30),
-//             Text(
-//               currentCard.term,
-//               style: TextStyle(
-//                 fontSize: 30,
-//                 fontWeight: FontWeight.bold,
-//                 color: Colors.blueAccent,
-//               ),
-//               textAlign: TextAlign.center,
-//             ),
-//             const SizedBox(height: 30),
-//             TextField(
-//               controller: answerController,
-//               decoration: InputDecoration(
-//                 border: OutlineInputBorder(),
-//                 labelText: 'Введите определение',
-//               ),
-//               onSubmitted: (_) => checkAnswer(),
-//               autofocus: true,
-//             ),
-//             const SizedBox(height: 30),
-//             ElevatedButton(
-//               onPressed: checkAnswer,
-//               child: Text('Ответить'),
-//               style: ElevatedButton.styleFrom(padding: EdgeInsets.symmetric(vertical: 14)),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-// test_screen.dart - Полностью переработанный с логикой Лейтнера
 
 import 'dart:math';
 import 'leitner_test_tesult_screen.dart';
@@ -282,7 +138,6 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   void _finishTest() async{
-    // +1 сессия TestScreen!
     await FirebaseFirestore.instance
         .collection('Users')
         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -290,7 +145,6 @@ class _TestScreenState extends State<TestScreen> {
         .doc(widget.moduleId)
         .update({'testSessions': FieldValue.increment(1)});
     
-    // Обновляем общую статистику
     await ModuleProgressService.updateModuleStats(widget.moduleId);
 
     final readinessLevel = _calculateReadiness();
@@ -299,14 +153,14 @@ class _TestScreenState extends State<TestScreen> {
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => LeitnerTestResultScreen(  // та же как в первом режиме
+        builder: (_) => LeitnerTestResultScreen(  
           correctCount: correctCount,
           totalAttempts: totalAttempts,
           uniqueCards: widget.cards.length,
           remainingCards: remainingCards.length,
           readinessLevel: readinessLevel,
           leitnerRecommendation: leitnerRecommendation,
-          moduleName: 'Заучивание',  // Можно передать из конструктора
+          moduleName: 'Заучивание',  
           moduleId: widget.moduleId,
         ),
       ),
@@ -352,7 +206,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     
     appBar: AppBar(
-      title: Text('Заучивание'),
+      // title: Text('Заучивание'),
       bottom: PreferredSize(
         preferredSize: Size.fromHeight(30),
         child: LinearProgressIndicator(
@@ -362,17 +216,16 @@ Widget build(BuildContext context) {
         ),
       ),
     ),
-    body: Column(  // 🔥 Главный Column
+    body: Column( 
       children: [
         
         Expanded(
-          flex: 7,  // 70% высоты скроллится 
+          flex: 7, 
           child: SingleChildScrollView(
             padding: EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Счетчик
           Text(
             'Осталось: ${remainingCards.length}',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
@@ -380,7 +233,6 @@ Widget build(BuildContext context) {
           ),
           SizedBox(height: 24),
 
-          // ОПРЕДЕЛЕНИЕ 
           Text(
             currentCard!.definition,
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -391,8 +243,7 @@ Widget build(BuildContext context) {
           ),
           SizedBox(height: 24),
 
-          // КАРТИНКА (если есть)
-          // if (hasImage) ...[
+          if (hasImage) ...[
             Container(
               height: 120,
               decoration: BoxDecoration(
@@ -413,11 +264,10 @@ Widget build(BuildContext context) {
               ),
             ),
             SizedBox(height: 8),
-          // ],
+          ],
 
           // SizedBox(height: 20),
 
-          // Заголовок задачи
           Text(
             isShowingCorrectAnswer 
                 ? 'Перепишите правильный ответ:' 
@@ -428,52 +278,13 @@ Widget build(BuildContext context) {
             textAlign: TextAlign.center,
           ),
           SizedBox(height: 24),
-
-          
-          // Индикатор правильности (только при переписывании)
-          // if (isShowingCorrectAnswer && answerController.text.isNotEmpty) ...[
-          //   SizedBox(height: 16),
-          //   AnimatedContainer(
-          //     duration: Duration(milliseconds: 300),
-          //     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-          //     decoration: BoxDecoration(
-          //       color: userAnswerCorrect ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-          //       borderRadius: BorderRadius.circular(12),
-          //       border: Border.all(
-          //         color: userAnswerCorrect ? Colors.green : Colors.red,
-          //         width: 1.5,
-          //       ),
-          //     ),
-          //     child: Row(
-          //       mainAxisAlignment: MainAxisAlignment.center,
-          //       children: [
-          //         Icon(
-          //           userAnswerCorrect ? Icons.check_circle : Icons.error,
-          //           color: userAnswerCorrect ? Colors.green : Colors.red,
-          //           size: 20,
-          //         ),
-          //         SizedBox(width: 8),
-          //         Text(
-          //           userAnswerCorrect 
-          //               ? 'Отлично!' 
-          //               : 'Попробуйте еще раз',
-          //           style: TextStyle(
-          //             fontSize: 15,
-          //             fontWeight: FontWeight.w500,
-          //             color: userAnswerCorrect ? Colors.green[700] : Colors.red[700],
-          //           ),
-          //         ),
-          //       ],
-          //     ),
-          //   ),
-          // ],
         ],
       ),
             
           ),
         ),
         Expanded(
-          flex: 3,
+          flex: 5,
           child: Container(
             padding: EdgeInsets.all(24),
             child: Column(
@@ -502,22 +313,8 @@ Widget build(BuildContext context) {
                   // onSubmitted: (_) => _checkAnswer(answerController.text), // При нажатии Enter/Готово на клавиатуре
                   ),
                 // SizedBox(height: 2),
-                // Кнопка только если ответ правильный или обычный режим
                 if (!isShowingCorrectAnswer || userAnswerCorrect) ...[
-                  // SizedBox(
-                  //   width: double.infinity,
-                  //   child: ElevatedButton(
-                  //     style: ElevatedButton.styleFrom(
-                  //       padding: EdgeInsets.symmetric(vertical: 16),
-                  //       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  //     ),
-                  //     onPressed: () => _checkAnswer(answerController.text),
-                  //     child: Text(
-                  //       isShowingCorrectAnswer ? 'Продолжить' : 'Проверить',
-                  //       style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  //     ),
-                  //   ),
-                  // ),
+                  
                   Align(
                   alignment: Alignment.centerRight,  
                   child: TextButton(
@@ -537,21 +334,10 @@ Widget build(BuildContext context) {
                   ),
                 ),
                 ],
-
               ],
-              
             ),
-            
           ),
-          
-
         ),
-        
-
-          // 
-
-          
-
       ],
     ),
   );

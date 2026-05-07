@@ -37,7 +37,7 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     }
   }
 
-  // Таймер автоматической проверки (каждые 3 сек)
+  // Таймер автоматической проверки
   void _startVerificationTimer() {
     _timer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       await _checkEmailVerification();
@@ -60,7 +60,6 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
     }
   }
 
-  // Переход на главный экран
   void _goToHome() {
     _timer?.cancel();
     if (mounted) {
@@ -97,15 +96,12 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Иконка
               Icon(
                 Icons.email_outlined,
                 size: 100,
-                // color: _isVerifying ? Colors.orange : Colors.green,
               ),
               const SizedBox(height: 32),
               
-              // Заголовок
               Text(
                 _isVerifying ? 'Подтвердите email' : 'Email подтверждён!',
                 style: Theme.of(context).textTheme.headlineMedium,
@@ -113,7 +109,6 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
               ),
               const SizedBox(height: 16),
               
-              // Email пользователя
               Text(
                 user?.email ?? '',
                 style: Theme.of(context).textTheme.bodyLarge,
@@ -121,12 +116,9 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
               ),
               const SizedBox(height: 32),
               
-              // Кнопка повторной отправки
               ElevatedButton(
                 onPressed: _isVerifying ? _resendVerificationEmail : null,
                 style: ElevatedButton.styleFrom(
-                  // backgroundColor: Colors.orange,
-                  // foregroundColor: Colors.white,
                 ),
                 child: const Text('Отправить письмо ещё раз'),
               ),
@@ -135,7 +127,6 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
               const Text(
                 'Проверьте почту.\nПисьмо приходит за 2-3 минуты.',
                 textAlign: TextAlign.center,
-                // style: TextStyle(color: Colors.grey),
               ),
               
             ],

@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:coursework/components/my_button.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:coursework/components/my_textfield.dart';
 import 'package:coursework/components/square_title.dart';
 import 'package:coursework/helper/helper_functions.dart';
 import 'dart:async';  // Для Timer
@@ -165,7 +164,6 @@ class _RegPageState extends State<RegPage> {
     //   );
     // }
   }
-  // Все ошибки Firebase на русском
   String _getAuthErrorMessage(String code) {
     switch (code) {
       case 'email-already-in-use':
@@ -299,13 +297,7 @@ Future<bool> checkUsernameUnique(String username) async {
                 
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  /* const SizedBox(height: 50),
-
-                  // logo
-                  const Icon(
-                    Icons.lock,
-                    size: 100,
-                  ), */
+                  
 
                   const SizedBox(height: 50),
 
@@ -459,49 +451,49 @@ Future<bool> checkUsernameUnique(String username) async {
 
                   //const SizedBox(height: 90),
                   Padding(padding: EdgeInsets.only(top: 20),),
-                  // взод через Google
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Divider(
-                            thickness: 0.5,
-                            //color: Colors.grey[400],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                          child: Text(
-                            'или войдите через',
-                            //style: TextStyle(color: Colors.grey[700]),
-                          ),
-                        ),
-                        Expanded(
-                          child: Divider(
-                            thickness: 0.5,
-                            //color: Colors.grey[400],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // // взод через Google
+                  // Padding(
+                  //   padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                  //   child: Row(
+                  //     children: [
+                  //       Expanded(
+                  //         child: Divider(
+                  //           thickness: 0.5,
+                  //           //color: Colors.grey[400],
+                  //         ),
+                  //       ),
+                  //       Padding(
+                  //         padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                  //         child: Text(
+                  //           'или войдите через',
+                  //           //style: TextStyle(color: Colors.grey[700]),
+                  //         ),
+                  //       ),
+                  //       Expanded(
+                  //         child: Divider(
+                  //           thickness: 0.5,
+                  //           //color: Colors.grey[400],
+                  //         ),
+                  //       ),
+                  //     ],
+                  //   ),
+                  // ),
 
-                  const SizedBox(height: 20),
+                  // const SizedBox(height: 20),
                   // Padding(padding: EdgeInsets.only(top: 20),),
 
-                  // google + apple sign in buttons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: const [
-                      // google button
-                      SquareTile(imagePath: 'lib/images/google.png'),
+                  // // google + apple sign in buttons
+                  // Row(
+                  //   mainAxisAlignment: MainAxisAlignment.center,
+                  //   children: const [
+                  //     // google button
+                  //     SquareTile(imagePath: 'lib/images/google.png'),
 
-                    ],
-                  ),
+                  //   ],
+                  // ),
                   
-                  //const SizedBox(height: 20),
-                  Padding(padding: EdgeInsets.only(top: 20),),
+                  // //const SizedBox(height: 20),
+                  // Padding(padding: EdgeInsets.only(top: 20),),
                   // not a member? register now
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,

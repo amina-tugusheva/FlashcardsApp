@@ -1,11 +1,7 @@
 import 'package:coursework/pages/profile.dart';
 import 'package:coursework/pages/search.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'cards.dart';
-
-import "createCardScreen.dart";
-import "userCardsList.dart";
 
 class HomePage extends StatefulWidget {
   const HomePage ({super.key});

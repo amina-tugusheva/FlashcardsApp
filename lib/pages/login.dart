@@ -2,7 +2,6 @@ import 'package:coursework/components/my_button.dart';
 import 'package:coursework/helper/helper_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:coursework/components/my_textfield.dart';
 import 'package:coursework/components/square_title.dart';
 import 'dart:async'; // Для таймеров
 
@@ -63,7 +62,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // Сброс пароля (ДИАЛОГ)
+  // Сброс пароля 
   Future<void> _showResetPasswordDialog() async {
     resetEmailController.clear();
     showDialog(
@@ -151,7 +150,6 @@ class _LoginPageState extends State<LoginPage> {
     return null;
   }
 
-  // Русские сообщения об ошибках
   String _getAuthErrorMessage(String code) {
     switch (code) {
       case 'invalid-email':
@@ -168,7 +166,7 @@ class _LoginPageState extends State<LoginPage> {
         return 'Ошибка: $code';
     }
   }
-// ✅ Сообщения об ошибках сброса
+// Сообщения об ошибках сброса
   String _getResetErrorMessage(String code) {
     switch (code) {
       case 'invalid-email': return 'Неверный email';
@@ -177,7 +175,6 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ✅ Показать ошибку
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -188,7 +185,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // ✅ Показать успех
   void _showSuccess(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -199,59 +195,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-
-
-//   // метод для входа пользователя 
-//   void signUserIn() async {
-//     //загрузка 
-//     showDialog(context: context,
-//      builder: (context) => const Center(
-//       child: CircularProgressIndicator()
-//       ),
-//     );
-//     // try sign in 
-//     try{
-//       await FirebaseAuth.instance.signInWithEmailAndPassword(
-//         email: emailController.text, 
-//         password: passwordController.text);
-
-//         // loadind circle
-//         if (context.mounted) Navigator.pop(context);
-//     }
-//     //ошибки 
-//     on FirebaseAuthException catch (e) {
-//     // закрываем индикатор загрузки
-//     if (context.mounted) Navigator.pop(context);
-    
-//     // обработка ошибок
-//     switch (e.code) {
-//       case 'invalid-email':
-//         displayMassageToUser('Неверный формат электронной почты.', context);
-//         break;
-//       case 'user-disabled':
-//         displayMassageToUser('Пользователь был отключен.', context);
-//         break;
-//       case 'user-not-found':
-//         displayMassageToUser('Пользователь не найден.', context);
-//         break;
-//       case 'wrong-password':
-//         displayMassageToUser('Неверный пароль.', context);
-//         break;
-//       case 'too-many-requests':
-//         displayMassageToUser('Слишком много запросов. Попробуйте позже.', context);
-//         break;
-//       case 'operation-not-allowed':
-//         displayMassageToUser('Аутентификация с использованием электронной почты и пароля отключена.', context);
-//         break;
-//       default:
-//         displayMassageToUser('Произошла ошибка. Пожалуйста, попробуйте еще раз.', context);
-//     }
-//   } catch (e) {
-//     // обрабатываем другие возможные исключения
-//     Navigator.pop(context);
-//     displayMassageToUser('Произошла ошибка: $e', context);
-//   }
-// }
 
   @override
   Widget build(BuildContext context) {
@@ -298,18 +241,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                //const SizedBox(height: 25),
-                // Padding(padding: EdgeInsets.only(top: 25),),
-
-                // // username textfield
-                // MyTextField(
-                //   controller: emailController,
-                //   hintText: 'e-mail',
-                //   obscureText: false,
-                // ),
-
-                // //const SizedBox(height: 10),
-                // Padding(padding: EdgeInsets.only(top: 10),),
+                
                 const SizedBox(height: 32),
 
                   // Email поле с валидацией
@@ -326,14 +258,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-
-                // // password textfield
-                // MyTextField(
-                //   controller: passwordController,
-                //   hintText: 'Пароль',
-                //   obscureText: true,
-                // ),
-                //  Пароль с иконкой глаза
                   TextFormField(
                     controller: passwordController,
                     obscureText: true,
@@ -348,22 +272,6 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 12),
 
 
-                // //если забыли пароль 
-                // //const SizedBox(height: 6),
-                // Padding(padding: EdgeInsets.only(top: 6),),
-
-                // Padding(
-                //   padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                //   child: Row(
-                //     mainAxisAlignment: MainAxisAlignment.end,
-                //     children: [
-                //       Text(
-                //         'забыли пароль?',
-                //         //style: TextStyle(color: const Color.fromARGB(255, 51, 57, 56)),
-                //       ),
-                //     ],
-                //   ),
-                // ),
                 //  кнопка "забыли пароль"
                   Align(
                     alignment: Alignment.centerRight,
@@ -381,78 +289,68 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 40),
 
-                // //кнопка для входа 
-                // //const SizedBox(height: 50),
-                // Padding(padding: EdgeInsets.only(top: 50),),
-
-                // MyButton(
-                //   text: 'войти',
-                //   onTap: signUserIn,
-                // ),
-
-                // //const SizedBox(height: 120),
-                // Padding(padding: EdgeInsets.only(top: 120),),
                 // Кнопка входа
                   SizedBox(
                     width: double.infinity,
                     child: MyButton(
                       text: 'Войти',
                       onTap: signUserIn,
+                      
                     ),
                   ),
                   const SizedBox(height: 40),
 
-                // взод через Google
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          //color: Colors.grey[400],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10.0),
-                        child: Text(
-                          'или войдите через',
-                          //style: TextStyle(color: Colors.grey[700]),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          //color: Colors.grey[400],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                // // взод через Google
+                // Padding(
+                //   padding: const EdgeInsets.symmetric(horizontal: 25.0),
+                //   child: Row(
+                //     children: [
+                //       Expanded(
+                //         child: Divider(
+                //           thickness: 0.5,
+                //           //color: Colors.grey[400],
+                //         ),
+                //       ),
+                //       Padding(
+                //         padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                //         child: Text(
+                //           'или войдите через',
+                //           //style: TextStyle(color: Colors.grey[700]),
+                //         ),
+                //       ),
+                //       Expanded(
+                //         child: Divider(
+                //           thickness: 0.5,
+                //           //color: Colors.grey[400],
+                //         ),
+                //       ),
+                //     ],
+                //   ),
+                // ),
 
-                //const SizedBox(height: 20),
-                Padding(padding: EdgeInsets.only(top: 20),),
+                // //const SizedBox(height: 20),
+                // Padding(padding: EdgeInsets.only(top: 20),),
 
-                // google + apple sign in buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
-                    // google button
-                    SquareTile(imagePath: 'lib/images/google.png'),
+                // // google + apple sign in buttons
+                // Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: const [
+                //     // google button
+                //     SquareTile(imagePath: 'lib/images/google.png'),
 
-                  ],
-                ),
+                //   ],
+                // ),
 
 
-                //const SizedBox(height: 20),
-                Padding(padding: EdgeInsets.only(top: 20),),
+                // //const SizedBox(height: 20),
+                // Padding(padding: EdgeInsets.only(top: 20),),
 
                 // not a member? register now
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'еще не зарегистрированы?',
+                      'не зарегистрированы?',
                       //style: TextStyle(color: Colors.grey[700]),
                     ),
                     const SizedBox(width: 4),
