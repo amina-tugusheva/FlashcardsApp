@@ -1,10 +1,10 @@
 // screens/module_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:coursework/components/module_model.dart'; 
 import 'userCardsList.dart'; 
 import 'create_module.dart';
+import 'package:coursework/services/module_service.dart';
 
 
 class ModuleListPage extends StatefulWidget {
@@ -15,6 +15,7 @@ class ModuleListPage extends StatefulWidget {
 class _ModuleListPageState extends State<ModuleListPage> 
     with SingleTickerProviderStateMixin {
   final currentUser = FirebaseAuth.instance.currentUser!;
+  final ModuleService _moduleService = ModuleService();
 
   late TabController _tabController;
   int _currentIndex = 0; // 0=Свои, 1=Сохранённые
@@ -35,95 +36,60 @@ class _ModuleListPageState extends State<ModuleListPage>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        // title: const Text('Мои модули'),
-      bottom: TabBar(
+        bottom: TabBar(
           controller: _tabController,
           onTap: (index) => setState(() => _currentIndex = index),
-          tabs: [
+          tabs: const [
             Tab(icon: Icon(Icons.folder), text: 'Свои'),
             Tab(icon: Icon(Icons.download), text: 'Сохранённые'),
           ],
         ),
       ),
-      
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildModulesList(showSavedOnly: false), // СВОИ
-          _buildModulesList(showSavedOnly: true),  // СОХРАНЁННЫЕ
-        ],
+      body: StreamBuilder<List<ModuleModel>>(
+        stream: _moduleService.watchUserModules(currentUser.uid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (snapshot.hasError) {
+            return Center(child: Text('Ошибка: ${snapshot.error}'));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState(false);
+          }
+
+          final allModules = snapshot.data!;
+          final ownModules = _moduleService.splitModules(modules: allModules, showSavedOnly: false);
+          final savedModules = _moduleService.splitModules(modules: allModules, showSavedOnly: true);
+
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildModulesList(ownModules, showSavedOnly: false),
+              _buildModulesList(savedModules, showSavedOnly: true),
+            ],
+          );
+        },
       ),
-      
-      // FAB ТОЛЬКО в "Свои"
       floatingActionButton: _currentIndex == 0
           ? FloatingActionButton(
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (context) => CreateModule()),
               ),
-              child: Icon(Icons.add),
+              child: const Icon(Icons.add),
               tooltip: 'Создать новый модуль',
             )
           : null,
     );
   }
   // ФУНКЦИЯ РАЗДЕЛЕНИЯ!
-  Widget _buildModulesList({required bool showSavedOnly}) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('modules')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return Center(child: CircularProgressIndicator());
-        }
-
-        if (snapshot.hasError) {
-          return Center(child: Text('Ошибка: ${snapshot.error}'));
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(showSavedOnly ? Icons.download : Icons.folder_open, size: 64),
-                SizedBox(height: 16),
-                Text(showSavedOnly 
-                    ? 'Сохраните модули из чужих профилей' 
-                    : 'Создайте первый модуль!'),
-              ],
-            ),
-          );
-        }
-
-        // ФИЛЬТР ПО isSaved!
-        final modules = snapshot.data!.docs
-            .map((doc) => ModuleModel.fromFirestore(doc))
-            .where((module) {
-              final isSavedModule = module.isSaved ?? false;
-              return showSavedOnly ? isSavedModule : !isSavedModule;
-            })
-            .toList();
-
-        if (modules.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(showSavedOnly ? Icons.star_border : Icons.add, size: 64),
-                SizedBox(height: 16),
-                Text(showSavedOnly 
-                    ? 'Сохранённых модулей нет' 
-                    : 'Модулей пока нет'),
-              ],
-            ),
-          );
-        }
-
+  Widget _buildModulesList(List<ModuleModel> modules, {required bool showSavedOnly}) {
+    if (modules.isEmpty) {
+      return _buildEmptyState(showSavedOnly);
+    }
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: modules.length,
@@ -474,7 +440,23 @@ class _ModuleListPageState extends State<ModuleListPage>
             );
           },
         );
-      },
+      
+    
+  }
+  Widget _buildEmptyState(bool showSavedOnly) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(showSavedOnly ? Icons.download : Icons.folder_open, size: 64),
+          const SizedBox(height: 16),
+          Text(
+            showSavedOnly
+                ? 'Сохраните модули из чужих профилей'
+                : 'Создайте первый модуль!',
+          ),
+        ],
+      ),
     );
   }
 }

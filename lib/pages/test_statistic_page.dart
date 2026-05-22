@@ -1,145 +1,150 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
-class UserStatisticsPage extends StatefulWidget {
-  const UserStatisticsPage({Key? key}) : super(key: key);
+class UserStatisticsPage extends StatelessWidget {
+  const UserStatisticsPage({super.key});
 
-  @override
-  _UserStatisticsPageState createState() => _UserStatisticsPageState();
-}
-
-class _UserStatisticsPageState extends State<UserStatisticsPage> {
-  final currentUser = FirebaseAuth.instance.currentUser!;
-
-  int modulesCount = 0;
-  int cardsCount = 0;
-  int testsCount = 0;
-  double averageScorePercent = 0.0;
-  int bestCorrect = 0;
-
-  bool isLoading = true;
-  String? errorMsg;
-
-  @override
-  void initState() {
-    super.initState();
-    loadStatistics();
+  String _formatDate(Timestamp? timestamp) {
+    if (timestamp == null) return 'Без даты';
+    return DateFormat('dd.MM.yyyy HH:mm').format(timestamp.toDate());
   }
 
-  Future<void> loadStatistics() async {
-    try {
-      // Получаем модули
-      final modulesSnapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('modules')
-          .get();
-
-      modulesCount = modulesSnapshot.docs.length;
-
-      // Считаем карточки во всех модулях
-      cardsCount = 0;
-      for (final moduleDoc in modulesSnapshot.docs) {
-        final cardsSnapshot = await moduleDoc.reference.collection('user_cards').get();
-        cardsCount += cardsSnapshot.docs.length;
-      }
-
-      // Загружаем историю тестов
-      final testHistorySnapshot = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('test_history')
-          .get();
-
-      testsCount = testHistorySnapshot.docs.length;
-
-      if (testsCount > 0) {
-        int totalCorrect = 0;
-        bestCorrect = 0;
-
-        for (final doc in testHistorySnapshot.docs) {
-          final data = doc.data();
-          int correct = (data['correct'] ?? 0) as int;
-          int total = (data['total'] ?? 1) as int;
-
-          totalCorrect += correct;
-          if (correct > bestCorrect) bestCorrect = correct;
-        }
-
-        averageScorePercent = totalCorrect / testHistorySnapshot.docs.fold<int>(0, (prev, d) {
-          final total = (d.data()['total'] ?? 1) as int;
-          return prev + total;
-        }) * 100;
-      } else {
-        averageScorePercent = 0;
-        bestCorrect = 0;
-      }
-    } catch (e) {
-      errorMsg = 'Ошибка загрузки статистики: $e';
-    }
-
-    if (mounted) {
-      setState(() {
-        isLoading = false;
-      });
-    }
+  double _safePercent(int correct, int total) {
+    if (total == 0) return 0;
+    return (correct / total) * 100;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(
-        appBar: AppBar(backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: const Text('Статистика')),
-        body: const Center(child: CircularProgressIndicator()),
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return const Scaffold(
+        body: Center(child: Text('Пользователь не авторизован')),
       );
     }
 
-    if (errorMsg != null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Статистика')),
-        body: Center(child: Text(errorMsg!)),
-      );
-    }
+    final userRef = FirebaseFirestore.instance.collection('Users').doc(user.uid);
+    final historyStream = userRef
+        .collection('test_history')
+        .orderBy('timestamp', descending: true)
+        .snapshots();
+    final modulesStream = userRef.collection('modules').snapshots();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Статистика')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            StatRow(label: 'Количество модулей', value: modulesCount.toString()),
-            StatRow(label: 'Количество карточек', value: cardsCount.toString()),
-            Divider(),
-            StatRow(label: 'Количество пройденных тестов', value: testsCount.toString()),
-            StatRow(label: 'Средний результат (%)', value: averageScorePercent.toStringAsFixed(1)),
-            StatRow(label: 'Лучший результат', value: bestCorrect.toString()),
-            Divider(),
-            // Если хотите — добавьте отслеживание времени в приложении и отобразите здесь
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Общая статистика'),
+        centerTitle: true,
+      ),
+      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+        stream: historyStream,
+        builder: (context, historySnapshot) {
+          if (historySnapshot.hasError) {
+            return const Center(child: Text('Ошибка загрузки статистики'));
+          }
+          if (historySnapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final historyDocs = historySnapshot.data?.docs ?? [];
+
+          int totalTests = historyDocs.length;
+          int totalCorrect = 0;
+          int totalAttempts = 0;
+          int totalUniqueCards = 0;
+          int bestResult = 0;
+
+          for (final doc in historyDocs) {
+            final data = doc.data();
+            final correct = (data['correct'] ?? 0) as int;
+            final attempts = (data['totalAttempts'] ?? 0) as int;
+            final uniqueCards = (data['uniqueCards'] ?? 0) as int;
+
+            totalCorrect += correct;
+            totalAttempts += attempts;
+            totalUniqueCards += uniqueCards;
+
+            final percent = _safePercent(correct, attempts).round();
+            if (percent > bestResult) bestResult = percent;
+          }
+
+          final averageSuccess = _safePercent(totalCorrect, totalAttempts);
+
+          return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+            stream: modulesStream,
+            builder: (context, modulesSnapshot) {
+              if (modulesSnapshot.hasError) {
+                return const Center(child: Text('Ошибка загрузки модулей'));
+              }
+              if (modulesSnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final moduleCount = modulesSnapshot.data?.docs.length ?? 0;
+
+              return ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Card(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Общая статистика',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildStatRow('Всего тестов', totalTests.toString()),
+                          _buildStatRow('Общий процент успеха',
+                              '${averageSuccess.toStringAsFixed(1)}%'),
+                          _buildStatRow('Правильных ответов', totalCorrect.toString()),
+                          _buildStatRow('Всего попыток', totalAttempts.toString()),
+                          _buildStatRow('Модулей', moduleCount.toString()),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
       ),
     );
   }
-}
 
-class StatRow extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const StatRow({Key? key, required this.label, required this.value}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 8),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 16)),
-        Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ],
-    ),
-  );
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 14,
+              // color: Colors.grey,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'userCardsList.dart';
 
-import 'package:coursework/components/module_model.dart'; 
+import 'package:coursework/services/test_service.dart';
 
 
 import 'dart:math';
@@ -28,6 +27,8 @@ class TestScreen extends StatefulWidget {
 }
 
 class _TestScreenState extends State<TestScreen> {
+  final TestService _testService = TestService();
+  
   late List<CardModel> remainingCards;
   CardModel? currentCard;
   TextEditingController answerController = TextEditingController();
@@ -35,6 +36,8 @@ class _TestScreenState extends State<TestScreen> {
   int correctCount = 0;
   int totalAttempts = 0;
   List<bool> sessionResults = [];
+  
+  bool showCorrectFeedback = false;
 
   @override
   void initState() {
@@ -61,44 +64,20 @@ class _TestScreenState extends State<TestScreen> {
     
     setState(() {
       selectedAnswerIndex = null;
+      
+      showCorrectFeedback = false;
       answerController.clear();
     });
   }
 
   Future<void> _updateCard(CardModel card, bool isCorrect) async {
-    final currentUser = FirebaseAuth.instance.currentUser!;
-    final cardRef = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser.uid)
-        .collection('modules')
-        .doc(widget.moduleId)
-        .collection('user_cards')
-        .doc(card.id);
-
-    // int newBox;
-    // if (isCorrect) {
-    //   newBox = min(card.box + 1, 5);
-    // } else {
-    //   newBox = max(card.box - 1, 1);
-    // }
-
-    // final Map<int, int> intervals = {1: 1, 2: 3, 3: 7, 4: 14, 5: 30};
-    // final now = DateTime.now();
-    // final nextReviewDate = now.add(Duration(days: intervals[newBox]!));
-    int newBox = isCorrect 
-        ? (card.box + 1).clamp(1, 5)
-        : (card.box - 1).clamp(1, 5);
-
-    final intervals = {1: 1, 2: 3, 3: 7, 4: 14, 5: 30};
-    final now = DateTime.now();
-    final nextReviewDate = now.add(Duration(days: intervals[newBox]!));
-
-    await cardRef.update({
-      'box': newBox,
-      'lastReviewed': FieldValue.serverTimestamp(),
-      'nextReview': Timestamp.fromDate(nextReviewDate),
-      'sessionAttempts': FieldValue.increment(1),
-    });
+    await _testService.updateCard(
+      ownerId: FirebaseAuth.instance.currentUser!.uid,
+      moduleId: widget.moduleId,
+      cardId: card.id,
+      currentBox: card.box,
+      isCorrect: isCorrect,
+    );
   }
 
     void _checkAnswer(String userAnswer) async {
@@ -111,7 +90,9 @@ class _TestScreenState extends State<TestScreen> {
         if (isCorrect) {
           totalAttempts++;
           sessionResults.add(false); // переписывание не засчитывается
-          
+          setState(() {
+            showCorrectFeedback = true;
+          });
           await Future.delayed(Duration(milliseconds: 500));
           _showNextCard();
         }
@@ -125,6 +106,11 @@ class _TestScreenState extends State<TestScreen> {
     if (isCorrect) {
       correctCount++;
       await _updateCard(currentCard!, true);
+      
+      setState(() {
+        showCorrectFeedback = true;
+      });
+
       await Future.delayed(Duration(seconds: 1));
       remainingCards.removeWhere((card) => card.id == currentCard!.id);
       _showNextCard();
@@ -132,23 +118,29 @@ class _TestScreenState extends State<TestScreen> {
       await _updateCard(currentCard!, false);
       setState(() {
         selectedAnswerIndex = -1; // Показать режим переписывания
+        
+        showCorrectFeedback = false;
       });
       answerController.clear();
     }
   }
 
   void _finishTest() async{
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .collection('modules')
-        .doc(widget.moduleId)
-        .update({'testSessions': FieldValue.increment(1)});
-    
+    await _testService.finishTest(
+      ownerId: FirebaseAuth.instance.currentUser!.uid,
+      moduleId: widget.moduleId,
+      moduleName: 'Заучивание',
+      correctCount: correctCount,
+      totalAttempts: totalAttempts,
+      uniqueCards: widget.cards.length,
+      remainingCards: remainingCards.length,
+      readinessLevel: _calculateReadiness(),
+    );
     await ModuleProgressService.updateModuleStats(widget.moduleId);
 
     final readinessLevel = _calculateReadiness();
     final leitnerRecommendation = _getLeitnerRecommendation();
+    if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
@@ -300,7 +292,9 @@ Widget build(BuildContext context) {
                     hintStyle: TextStyle(fontSize: 16),
                     // border: InputBorder.none,
                     // contentPadding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    
+                    suffixIcon: showCorrectFeedback
+                          ? const Icon(Icons.check_circle, color: Colors.green)
+                          : null,
                   ),
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
                   onChanged: (value) {
@@ -313,6 +307,27 @@ Widget build(BuildContext context) {
                   // onSubmitted: (_) => _checkAnswer(answerController.text), // При нажатии Enter/Готово на клавиатуре
                   ),
                 // SizedBox(height: 2),
+                // const SizedBox(height: 8),
+                //   AnimatedSwitcher(
+                //     duration: const Duration(milliseconds: 200),
+                //     child: showCorrectFeedback
+                //         ? const Row(
+                //             key: ValueKey('correct'),
+                //             mainAxisAlignment: MainAxisAlignment.center,
+                //             children: [
+                //               Icon(Icons.check_circle, color: Colors.green, size: 22),
+                //               SizedBox(width: 6),
+                //               Text(
+                //                 'Правильно!',
+                //                 style: TextStyle(
+                //                   color: Colors.green,
+                //                   fontWeight: FontWeight.bold,
+                //                 ),
+                //               ),
+                //             ],
+                //           )
+                //         : const SizedBox.shrink(key: ValueKey('empty')),
+                //   ),
                 if (!isShowingCorrectAnswer || userAnswerCorrect) ...[
                   
                   Align(

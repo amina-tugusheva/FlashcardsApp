@@ -141,12 +141,12 @@ class _FlashCardsScreenState extends State<FlashCardsScreen> {
               children: [
                 ElevatedButton(
                   onPressed: currentIndex > 0 ? onPrevCard : null,
-                  child: Icon(Icons.arrow_back),
+                  child: Icon(Icons.arrow_back, color: Colors.white),
                 ),
                 SizedBox(width: 24),
                 ElevatedButton(
                   onPressed: currentIndex < widget.cards.length - 1 ? onNextCard : null,
-                  child: Icon(Icons.arrow_forward),
+                  child: Icon(Icons.arrow_forward, color: Colors.white),
                 ),
               ],
             ),

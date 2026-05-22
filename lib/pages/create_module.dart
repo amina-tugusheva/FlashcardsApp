@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+import 'package:coursework/services/module_service.dart';
 class CreateModule extends StatefulWidget {
   final String? moduleId;  // null = создание, ID = редактирование
   final String? moduleName;
@@ -17,7 +16,8 @@ class _CreateModuleState extends State<CreateModule> {
   late final TextEditingController nameController;  // late
   late final TextEditingController descriptionController;
   final currentUser = FirebaseAuth.instance.currentUser!;
-  
+  final ModuleService _moduleService = ModuleService();
+
   bool isPublic = true;
   bool isLoading = false;  // Антидублирование
   
@@ -41,52 +41,50 @@ class _CreateModuleState extends State<CreateModule> {
     }
   }
 
+  @override
+  void dispose() {
+    nameController.dispose();
+    descriptionController.dispose();
+    for (final controller in termControllers) {
+      controller.dispose();
+    }
+    for (final controller in definitionControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
   // загрузка существующих карточек при редактировании 
   Future<void> _loadModuleData() async {
     try {
-      final moduleDoc = await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('modules')
-          .doc(widget.moduleId)
-          .get();
+      final data = await _moduleService.loadModule(currentUser.uid, widget.moduleId!);
+      if (data == null) return;
 
-      if (moduleDoc.exists) {
-        final data = moduleDoc.data()!;
-
-        nameController.text = data['name'] ?? widget.moduleName ?? '';
+      if (!mounted) return;
+      setState(() {
+        nameController.text = data['name'] ?? '';
         descriptionController.text = data['description'] ?? '';
-        isPublic = data['isPublic'] ?? true; 
+        isPublic = data['isPublic'] ?? true;
 
-        // Загружаем карточки
-        final cardsSnapshot = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser.uid)
-            .collection('modules')
-            .doc(widget.moduleId)
-            .collection('user_cards')
-            .orderBy('createdAt')
-            .get();
+        termControllers = [];
+        definitionControllers = [];
 
-        if (mounted) {
-          setState(() {
-            for (var doc in cardsSnapshot.docs) {
-              final cardData = doc.data() as Map<String, dynamic>;
-              termControllers.add(TextEditingController(text: cardData['term'] ?? ''));
-              definitionControllers.add(TextEditingController(text: cardData['definition'] ?? ''));
-            }
-            if (termControllers.isEmpty) _addCardFields();
-          });
+        final cards = (data['cards'] as List).cast<Map<String, dynamic>>();
+        for (final card in cards) {
+          termControllers.add(TextEditingController(text: card['term'] ?? ''));
+          definitionControllers.add(TextEditingController(text: card['definition'] ?? ''));
         }
-      }
+
+        if (termControllers.isEmpty) {
+          _addCardFields();
+        }
+      });
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: $e')),
-        );
-      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка загрузки: $e')),
+      );
     }
-    if (mounted) setState(() {});  // Refresh UI
   }
 
   void _addCardFields() {
@@ -108,11 +106,12 @@ class _CreateModuleState extends State<CreateModule> {
   
 
   List<Map<String, String>> getValidCards() {
-    final termsSet = <String>{};  //  Антидубли!
-    List<Map<String, String>> validCards = [];
+    final validCards = <Map<String, String>>[];
+
     for (int i = 0; i < termControllers.length; i++) {
       final term = termControllers[i].text.trim();
       final definition = definitionControllers[i].text.trim();
+
       if (term.isNotEmpty && definition.isNotEmpty) {
         validCards.add({
           'term': term,
@@ -120,141 +119,64 @@ class _CreateModuleState extends State<CreateModule> {
         });
       }
     }
+
     return validCards;
   }
 
   Future<void> saveModule() async {
-    if (isLoading) return;  // Блокировка дублей!
-    if (widget.moduleId == null) {
-      final name = nameController.text.trim();
-      final validCards = getValidCards();
-      
-      if (name.isEmpty || validCards.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Добавьте название и хотя бы 1 карточку')),
+    if (isLoading) return;
+
+    final name = nameController.text.trim();
+    final cards = getValidCards();
+
+    if (name.isEmpty || cards.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Добавьте название и хотя бы 1 карточку')),
+      );
+      return;
+    }
+
+    setState(() => isLoading = true);
+
+    try {
+      if (widget.moduleId == null) {
+        await _moduleService.createModule(
+          userId: currentUser.uid,
+          name: name,
+          description: descriptionController.text.trim(),
+          isPublic: isPublic,
+          cards: cards,
         );
-        return;
-      }
-      setState(() => isLoading = true);  
-
-      try {
-        final moduleRef = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser.uid)
-            .collection('modules')
-            .add({
-          'name': name,
-          'description': descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-          'userId': currentUser.uid,
-          'isPublic': isPublic,
-          'cardsCount': validCards.length,
-          'testSessions': 0,     //  Прогресс!
-          'createdAt': FieldValue.serverTimestamp(),
-          'lastUpdated': FieldValue.serverTimestamp(),
-        });
-
-        
-
-        final batch = FirebaseFirestore.instance.batch();
-        for (var card in validCards) {
-          final cardRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(currentUser.uid)
-              .collection('modules')
-              .doc(moduleRef.id)
-              .collection('user_cards')
-              .doc();
-          batch.set(cardRef, {
-            'term': card['term']!,
-            'definition': card['definition']!,
-            'userId': currentUser.uid,
-            'moduleId': moduleRef.id,
-            'imageUrl': '',
-            'box': 1,
-            'correct_count': 0,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-        await batch.commit();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Модуль создан с ${validCards.length} карточками!')),
-          );
-          Navigator.pop(context);
-        }
-      } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка: $e')),
+          SnackBar(content: Text('Модуль создан с ${cards.length} карточками!')),
+        );
+      } else {
+        await _moduleService.updateModule(
+          userId: currentUser.uid,
+          moduleId: widget.moduleId!,
+          name: name,
+          description: descriptionController.text.trim(),
+          isPublic: isPublic,
+          cards: cards,
+        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Модуль сохранен')),
         );
       }
-    } else {
-      final name = nameController.text.trim();
-      final cards = getValidCards();
-      if (name.isEmpty || cards.isEmpty) return;
 
-      try {
-        final batch = FirebaseFirestore.instance.batch();
-
-        // Обновляем модуль
-        batch.update(
-          FirebaseFirestore.instance
-              .collection('Users')
-              .doc(currentUser.uid)
-              .collection('modules')
-              .doc(widget.moduleId),
-          {
-            'name': name,
-            'description': descriptionController.text.trim().isEmpty ? null : descriptionController.text.trim(),
-            'isPublic': isPublic,
-            'cardsCount': cards.length,
-            'lastUpdated': FieldValue.serverTimestamp(),
-          },
-        );
-
-        // Удаляем старые карточки
-        final oldCards = await FirebaseFirestore.instance
-            .collection('Users')
-            .doc(currentUser.uid)
-            .collection('modules')
-            .doc(widget.moduleId)
-            .collection('user_cards')
-            .get();
-        for (var doc in oldCards.docs) batch.delete(doc.reference);
-
-        // Создаем новые карточки
-        for (var card in cards) {
-          final newCardRef = FirebaseFirestore.instance
-              .collection('Users')
-              .doc(currentUser.uid)
-              .collection('modules')
-              .doc(widget.moduleId)
-              .collection('user_cards')
-              .doc();
-          batch.set(newCardRef, {
-            'term': card['term'],
-            'definition': card['definition'],
-            'userId': currentUser.uid,
-            'moduleId': widget.moduleId,
-            'imageUrl': '',
-            'box': 1,
-            'correct_count': 0,
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-        }
-
-        await batch.commit();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Модуль сохранен')));
-          Navigator.pop(context);
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-      } finally {
-      if (mounted) setState(() => isLoading = false);  //  Сброс!
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
       }
     }
-    
   }
 
   
@@ -377,44 +299,32 @@ class _CreateModuleState extends State<CreateModule> {
                         ),
 
                         ),
-
-                        // Номер карточки и кнопка удаления
-                        
-                        
                       ],
                     ),
                   );
                 }),
-
-                // Форма новой карточки
-                
-                
                 SizedBox(height: 20),
                 IconButton(
                   onPressed: _addCardFields,
                   icon: Icon(Icons.add, size: 40, color: colors.primary),
                   tooltip: 'Добавить карточку',
                 ),
-
                 SizedBox(height: 30),
-
               ],
             ),
           ),
-
-          
         ],
       ),
     );
   }
 
-  @override
-  void dispose() {
-    nameController.dispose();
-    descriptionController.dispose();
-    for (var controller in termControllers) controller.dispose();
-    for (var controller in definitionControllers) controller.dispose();
-    super.dispose();
-  }
+  // @override
+  // void dispose() {
+  //   nameController.dispose();
+  //   descriptionController.dispose();
+  //   for (var controller in termControllers) controller.dispose();
+  //   for (var controller in definitionControllers) controller.dispose();
+  //   super.dispose();
+  // }
 }
 

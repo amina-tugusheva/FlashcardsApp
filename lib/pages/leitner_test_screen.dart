@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'userCardsList.dart';
 import 'leitner_test_tesult_screen.dart';
 import 'dart:math';
 import 'module_progress_service.dart';
+import 'package:coursework/services/test_service.dart';
 
 class LeitnerTestScreen extends StatefulWidget {
   final String moduleId;
@@ -23,6 +23,8 @@ class LeitnerTestScreen extends StatefulWidget {
 }
 
 class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
+  final TestService _leitnerTestService = TestService();
+
   late List<CardModel> remainingCards;  // Оставшиеся карточки в колоде
   CardModel? currentCard;
   List<String> shuffledChoices = [];
@@ -59,10 +61,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
   if (currentCard == null) return;
 
   // используем ВСЮ исходную колоду 
-  final allOtherCards = widget.cards
-      .where((card) => card.id != currentCard!.id)
-      .toList();
-  
+  final allOtherCards = widget.cards.where((card) => card.id != currentCard!.id).toList();
   allOtherCards.shuffle(Random());
   
   final wrongTerms = allOtherCards.take(3).map((c) => c.term).toList();
@@ -72,40 +71,23 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
           .map((c) => c.term));
     }
 
-    List<String> choices = [currentCard!.term, ...wrongTerms];
+    // List<String> choices = [currentCard!.term, ...wrongTerms];
+    final choices = [currentCard!.term, ...wrongTerms];
+    
     choices.shuffle(Random());
     
     shuffledChoices = choices;
 }
 
   Future<void> _updateCard(CardModel card, bool isCorrect) async {
-    final currentUser = FirebaseAuth.instance.currentUser!;
-    final cardRef = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser.uid)
-        .collection('modules')
-        .doc(widget.moduleId)
-        .collection('user_cards')
-        .doc(card.id);
-
-    int newBox;
-    if (isCorrect) {
-      newBox = min(card.box + 1, 5);
-    } else {
-      newBox = max(card.box - 1, 1);
-    }
-
-    // Интервалы повторения Лейтнера (дни)
-    final Map<int, int> intervals = {1: 1, 2: 3, 3: 7, 4: 14, 5: 30};
-    final now = DateTime.now();
-    final nextReviewDate = now.add(Duration(days: intervals[newBox]!));
-
-    await cardRef.update({
-      'box': newBox,
-      'lastReviewed': FieldValue.serverTimestamp(),
-      'nextReview': Timestamp.fromDate(nextReviewDate),
-      'sessionAttempts': FieldValue.increment(1), // Счетчик попыток в сеансе
-    });
+    await _leitnerTestService.updateCard(
+      ownerId: FirebaseAuth.instance.currentUser!.uid,
+  
+      moduleId: widget.moduleId,
+      cardId: card.id,
+      currentBox: card.box,
+      isCorrect: isCorrect,
+    );
   }
 
   void _onAnswerSelected(int selectedIndex) async {
@@ -139,18 +121,23 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
   }
 
   void _finishTest() async {
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(FirebaseAuth.instance.currentUser!.uid)
-        .collection('modules')
-        .doc(widget.moduleId)
-        .update({'leitnerSessions': FieldValue.increment(1)});
-    
-    // Обновляем общую статистику
-    await ModuleProgressService.updateModuleStats(widget.moduleId);
+    await _leitnerTestService.incrementSession(moduleId: widget.moduleId);
 
     final readinessLevel = _calculateReadiness();
     final leitnerRecommendation = _getLeitnerRecommendation();
+
+    await _leitnerTestService.saveTestHistory(
+      moduleId: widget.moduleId,
+      moduleName: widget.moduleName,
+      correctCount: correctCount,
+      totalAttempts: totalAttempts,
+      uniqueCards: widget.cards.length,
+      remainingCards: remainingCards.length,
+      readinessLevel: readinessLevel,
+    );
+    await ModuleProgressService.updateModuleStats(widget.moduleId);
+
+    if (!mounted) return;
 
     Navigator.pushReplacement(
       context,
@@ -189,23 +176,7 @@ class _LeitnerTestScreenState extends State<LeitnerTestScreen> {
     return 'Повторите завтра';
   }
 
-  Future<void> _saveTestResult() async {
-    final currentUser = FirebaseAuth.instance.currentUser!;
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser.uid)
-        .collection('test_history')
-        .add({
-      'moduleId': widget.moduleId,
-      'moduleName': widget.moduleName,
-      'timestamp': FieldValue.serverTimestamp(),
-      'correct': correctCount,
-      'totalAttempts': totalAttempts,
-      'uniqueCards': widget.cards.length,
-      'remainingCards': remainingCards.length,
-      'readinessLevel': _calculateReadiness(),
-    });
-  }
+  
 
   @override
   Widget build(BuildContext context) {

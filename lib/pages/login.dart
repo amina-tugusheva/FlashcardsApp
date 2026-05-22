@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:coursework/components/square_title.dart';
 import 'dart:async'; // Для таймеров
+import 'package:coursework/services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
 

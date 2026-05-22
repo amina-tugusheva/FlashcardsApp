@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'flashCardsScreen.dart';
 import 'test_screen.dart';
-import 'moduleListPage.dart';
 import 'create_module.dart';
 import "leitner_test_screen.dart";
+import 'package:coursework/services/card_service.dart';
 
 //import 'package:coursework/components/card_model.dart';
 // Модель карточки
@@ -67,34 +67,28 @@ class UserCardsList extends StatefulWidget {
 
 class _UserCardsListState extends State<UserCardsList> {
   final currentUser = FirebaseAuth.instance.currentUser!;
+  final CardsService _cardsService = CardsService();
+
+   bool get _canStudy => !widget.isPublicStudy;
+
 
   // Универсальная функция получения карточек
-  Stream<QuerySnapshot> getCardsStream() {
-    String userIdToQuery = widget.authorId ?? currentUser.uid; // Свои или чужие
-    
-    return FirebaseFirestore.instance
-        .collection('Users')
-        .doc(userIdToQuery) // authorId или currentUser
-        .collection('modules')
-        .doc(widget.moduleId)
-        .collection('user_cards')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+  Stream<QuerySnapshot<Map<String, dynamic>>> getCardsStream() {
+    return _cardsService.getCardsStream(
+      authorId: widget.authorId,
+      moduleId: widget.moduleId,
+    );
   }
   
 
   // Функция получения карточек
   Future<List<CardModel>> _getCards() async {
-    // final snapshot = await FirebaseFirestore.instance
-    //     .collection('Users')
-    //     .doc(currentUser.uid)
-    //     .collection('modules')
-    //     .doc(widget.moduleId)
-    //     .collection('user_cards')
-    //     .get();
-    final snapshot = await getCardsStream().first;
-    return snapshot.docs.map(CardModel.fromDocument).toList();
+    return _cardsService.getCards(
+      authorId: widget.authorId,
+      moduleId: widget.moduleId,
+    );
   }
+  
   Future<void> _goToFlashCards() async {
   final cards = await _getCards();
   if (cards.isEmpty || !mounted) return;
@@ -104,6 +98,9 @@ class _UserCardsListState extends State<UserCardsList> {
   }
 
   Future<void> _goToTest() async {
+    
+    if (!_canStudy) return;
+
     final cards = await _getCards();
     if (cards.isEmpty || !mounted) return;
     Navigator.push(context, MaterialPageRoute(
@@ -116,6 +113,8 @@ class _UserCardsListState extends State<UserCardsList> {
   }
 
   Future<void> _goToCheck() async {
+    
+    if (!_canStudy) return;
     final cards = await _getCards();
     if (cards.isEmpty || !mounted) return;
     Navigator.push(context, MaterialPageRoute(
@@ -128,152 +127,66 @@ class _UserCardsListState extends State<UserCardsList> {
 
   // Удаление модуля (Firestore автоочищает карточки)
   Future<void> _deleteModule() async {
-    if (widget.isPublicStudy) return; // Нельзя удалять чужие!
+    if (widget.isPublicStudy) return;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Удалить модуль?'),
+        title: const Text('Удалить модуль?'),
         content: Text('${widget.moduleName} и все карточки будут удалены навсегда.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
           TextButton(
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Удалить'),
+            child: const Text('Удалить'),
           ),
         ],
       ),
     );
+
     if (confirm != true || !mounted) return;
 
     try {
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('modules')
-          .doc(widget.moduleId)
-          .delete();
+      await _cardsService.deleteMyModule(moduleId: widget.moduleId);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Модуль удален'), backgroundColor: Colors.red),
+        const SnackBar(
+          content: Text('Модуль удален'),
+          backgroundColor: Colors.red,
+        ),
       );
-      Navigator.pop(context); //  Возврат на moduleListPage
+      Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
+      );
     }
   }
   // функция сохранения модулей других пользовтелей 
   Future<void> _copyToMyModules() async {
-    if (!widget.isPublicStudy) return; // Только для чужих!
+    if (!widget.isPublicStudy) return;
 
-    final cardsStream = getCardsStream();
-    final snapshot = await cardsStream.first;
-    final cards = snapshot.docs.map(CardModel.fromDocument).toList();
-    
-    if (cards.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Карточек нет для копирования')),
+    try {
+      await _cardsService.copyPublicModuleToMyModules(
+        authorId: widget.authorId,
+        moduleId: widget.moduleId,
+        moduleName: widget.moduleName,
       );
-      return;
-    }
 
-    final currentUser = FirebaseAuth.instance.currentUser!;
-  final newModuleRef = FirebaseFirestore.instance
-      .collection('Users')
-      .doc(currentUser.uid)
-      .collection('modules')
-      .doc();
-
-  // ПРОФИЛЬ АВТОРА
-  final authorSnapshot = await FirebaseFirestore.instance
-      .collection('Users')
-      .doc(widget.authorId)
-      .get();
-
-  String authorName = 'Неизвестный автор';
-  if (authorSnapshot.exists) {
-    authorName = authorSnapshot.data()!['имя пользователя'] ?? 'Без имени';
-  }
-
-  // ОПИСАНИЕ ИЗ МОДУЛЯ АВТОРА
-  final moduleSnapshot = await FirebaseFirestore.instance
-      .collection('Users')
-      .doc(widget.authorId)
-      .collection('modules')
-      .doc(widget.moduleId)
-      .get();
-
-  String moduleDescription = 'Описание модуля недоступно';
-  if (moduleSnapshot.exists) {
-    moduleDescription = moduleSnapshot.data()?['description'] ?? 'Нет описания';
-  }
-
-  print('🔍 AUTHOR: $authorName');
-  print('🔍 MODULE_DESC: $moduleDescription');
-
-    // Метаданные модуля
-    await newModuleRef.set({
-      'name': widget.moduleName,
-      'description': moduleDescription,  
-      'isPublic': false,
-      'cardsCount': cards.length,
-      'createdAt': FieldValue.serverTimestamp(),
-      'sourceModuleId': widget.moduleId,
-      'sourceAuthorId': widget.authorId,
-      'isSaved': true,
-      'sourceAuthorName': authorName,
-      'savesCount': 0,
-    });
-
-    // Копируем все карточки
-    for (final cardDoc in snapshot.docs) {
-      final cardData = cardDoc.data() as Map<String, dynamic>;
-      await FirebaseFirestore.instance
-          .collection('Users')
-          .doc(currentUser.uid)
-          .collection('modules')
-          .doc(newModuleRef.id)
-          .collection('user_cards')
-          .add({
-        'term': cardData['term'],
-        'definition': cardData['definition'],
-        'imageUrl': cardData['imageUrl'] ?? '',
-        'box': 1, // Сброс Leitner
-        'createdAt': FieldValue.serverTimestamp(),
-        'sessionAttempts': 0,
-      });
-    }
-     // УВЕЛИЧИВАЕМ ПОПУЛЯРНОСТЬ ОРИГИНАЛА
-    await FirebaseFirestore.instance
-        .collection('Users')
-        .doc(widget.authorId) 
-        .collection('modules')
-        .doc(widget.moduleId) 
-        .update({
-      'savesCount': FieldValue.increment(1),  // +1 сохранение
-    }).catchError((error) {
-      print('Не удалось обновить savesCount: $error');
-      // Не критично — продолжаем
-    });
-
-    if (mounted) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${cards.length} карточек сохранено в Мои модули!'),
+          content: Text('${widget.moduleName} сохранён в Мои модули'),
           backgroundColor: Colors.green,
-          action: SnackBarAction(
-            label: 'Открыть',
-            onPressed: () {
-              Navigator.pop(context); 
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ModuleListPage(),
-                ),
-              );
-            },
-          ),
         ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ошибка: $e')),
       );
     }
   }
@@ -344,19 +257,29 @@ class _UserCardsListState extends State<UserCardsList> {
     ),
   );
 }
+Widget _buildStudyButton({
+  required String text,
+  required VoidCallback? onPressed,
+}) {
+  return Expanded(
+    child: ElevatedButton(
+      onPressed: onPressed,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          text,
+          maxLines: 1,
+          softWrap: false,
+        ),
+      ),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
     // Поток карточек для списка
-    final cardsStream = FirebaseFirestore.instance
-        .collection('Users')
-        .doc(currentUser.uid)
-        .collection('modules')
-        .doc(widget.moduleId)
-        .collection('user_cards')
-        .orderBy('createdAt', descending: true)
-        .snapshots();
-
+    
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.moduleName),
@@ -379,23 +302,48 @@ class _UserCardsListState extends State<UserCardsList> {
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // children: [
+              //   // Кнопка "Карточки"
+              //   ElevatedButton(
+              //   onPressed: _goToFlashCards, child: Text('Просмотр')),
+
+              //   // Кнопка "Тестирование"
+              //   ElevatedButton(
+              //     onPressed: _goToTest, child: Text('Тест')
+              //   ),
+
+              //   // Кнопка "Обучение"
+              //   ElevatedButton(
+              //     onPressed: _goToCheck, child: Text('Проверка')
+              //   ),
+              // ],
               children: [
-                // Кнопка "Карточки"
-                ElevatedButton(
-                onPressed: _goToFlashCards, child: Text('Просмотр')),
-
-                // Кнопка "Тестирование"
-                ElevatedButton(
-                  onPressed: _goToTest, child: Text('Тест')
+                _buildStudyButton(
+                  text: 'просмотр',
+                  onPressed: _goToFlashCards,
                 ),
-
-                // Кнопка "Обучение"
-                ElevatedButton(
-                  onPressed: _goToCheck, child: Text('Проверка')
+                const SizedBox(width: 8),
+                _buildStudyButton(
+                  text: 'тест',
+                  onPressed: _canStudy ? _goToTest : null,
+                ),
+                const SizedBox(width: 8),
+                _buildStudyButton(
+                  text: 'проверка',
+                  onPressed: _canStudy ? _goToCheck : null,
                 ),
               ],
             ),
           ),
+          if (widget.isPublicStudy)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Это чужой модуль. Сначала сохраните его в Мои модули, чтобы открыть тестирование.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          const SizedBox(height: 8),
           // Список карточек
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -444,6 +392,7 @@ class _UserCardsListState extends State<UserCardsList> {
                           children: [
                             Text(cardData['definition'] ?? ''),
                             SizedBox(height: 4),
+                            if (!widget.isPublicStudy)
                             Text(
                               'Уровень повторения: $box',
                               style: TextStyle(

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'userCardsList.dart';
 import 'moduleListPage.dart';
+import 'test_history_page.dart';
+import 'test_statistic_page.dart';
+import 'package:coursework/services/card_service.dart';
 
 class CardsPage extends StatefulWidget {
   @override
@@ -9,6 +11,8 @@ class CardsPage extends StatefulWidget {
 }
 
 class _CardsPageState extends State<CardsPage> {
+  final CardsService _cardsService = CardsService();
+
   List<Map<String, dynamic>> popularModules = [];
   bool isLoadingPopular = true;
   
@@ -23,64 +27,14 @@ class _CardsPageState extends State<CardsPage> {
     setState(() => isLoadingPopular = true);
     
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collectionGroup('modules')
-          .where('isPublic', isEqualTo: true)
-          .orderBy('savesCount', descending: true)  // По сохранениям
-          .limit(10)
-          .get();
-
-      print('ТОП МОДУЛИ ПО СОХРАНЕНИЯМ (${snapshot.docs.length}):');
-      for (int i = 0; i < snapshot.docs.length; i++) {
-        final doc = snapshot.docs[i];
-        final data = doc.data() as Map<String, dynamic>;
-        print('  #${i+1}: ${data['name']} | ${data['savesCount'] ?? 0} сохранений');
-        print('автор: ${doc.reference.parent.parent!.id}');
-      }
-
-      final modules = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        return {
-          'id': doc.id,
-          'name': data['name'] ?? 'Без названия',
-          'savesCount': data['savesCount'] ?? 0,  
-          'cardsCount': data['cardsCount'] ?? 0,
-          'description': data['description']?.toString() ?? '',
-          'userId': doc.reference.parent.parent!.id,
-        };
-      }).toList();
-
-      // if (mounted) {
-        // setState(() {
-        //   popularModules = modules;
-        //   isLoadingPopular = false;
-        // });
-      // }
-      if (snapshot.docs.isNotEmpty) {
-      
-      popularModules = modules;
-      isLoadingPopular = false;
-      // popularModules = snapshot.docs.map(_parseModule).toList();
-    } else {
-      print('Нет популярных, показываем рекомендуемый');
-      popularModules = [
-        {
-          'id': 'Uz9dtY8GeVMXaNnMWvWy',
-          'name': 'лексика для экзамена',
-          'savesCount': 0,
-          'cardsCount': 20,
-          'description': 'подготовка к экзамену по английскому',
-          'userId': 'H1dluCmhKjMIJxstKK4iy8b7U0L2',
-          'isFeatured': true,  
-        },
-      ];
-    }
-
-    if (mounted) {
-      setState(() => isLoadingPopular = false);
-    }
+      final modules = await _cardsService.loadPopularModules();
+      if (!mounted) return;
+      setState(() {
+        popularModules = modules;
+        isLoadingPopular = false;
+      });
     } catch (e) {
-      print('Ошибка загрузки популярных модулей: $e');
+      debugPrint('Ошибка загрузки популярных модулей: $e');
       if (mounted) {
         setState(() => isLoadingPopular = false);
       }
@@ -133,7 +87,7 @@ class _CardsPageState extends State<CardsPage> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.primary,  
+                    // backgroundColor: Theme.of(context).colorScheme.primary,  
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20), 
                     shape: RoundedRectangleBorder(
@@ -153,7 +107,40 @@ class _CardsPageState extends State<CardsPage> {
                 ),
               ),
             ),
-            
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: 
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        
+                        Expanded(
+                          child: _ActionTile(
+                            icon: Icons.history,
+                            label: 'История',
+                            onTap: _goToHistory,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _ActionTile(
+                            icon: Icons.bar_chart,
+                            label: 'Статистика',
+                            onTap: _goToStats,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+              // const SizedBox(height: 32),
             SizedBox(height: 24),
             
             // ПОПУЛЯРНЫЕ МОДУЛИ
@@ -295,4 +282,41 @@ class _CardsPageState extends State<CardsPage> {
       ),
     );
   }
+  Widget _ActionTile({
+  required IconData icon,
+  required String label,
+  required VoidCallback onTap,
+}) {
+
+  return ElevatedButton(
+    // borderRadius: BorderRadius.circular(16),
+    onPressed: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 10),
+      decoration: BoxDecoration(
+        // color: theme.colorScheme.primary,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 28, color: Colors.white),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+  void _goToHistory() => Navigator.push(context, MaterialPageRoute(builder: (_) => TestHistoryPage()));
+  void _goToStats() => Navigator.push(context, MaterialPageRoute(builder: (_) => UserStatisticsPage()));
+
 }

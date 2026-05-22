@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart'; 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';  // Для Timer
-import 'package:coursework/main.dart';
 import 'home.dart';
 
 class EmailVerificationPage extends StatefulWidget {

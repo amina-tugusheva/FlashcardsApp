@@ -1,101 +1,99 @@
 import 'package:flutter/material.dart'; 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:coursework/pages/other_user_prifile_page.dart';
+import 'dart:async';  // Для Tim
+import 'package:coursework/components/module_search_title.dart';
+import 'package:coursework/components/user_search_title.dart';
+import 'package:coursework/services/search_service.dart';
 
-import 'userCardsList.dart';
 class SearchPage extends StatefulWidget {
   @override
   _SearchPageState createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
-  final usersCollection = FirebaseFirestore.instance.collection('Users');
-  final modulesCollection = FirebaseFirestore.instance.collectionGroup('modules');
-  
-  late TabController _tabController;
-  List<Map<String, dynamic>> searchResults = [];
-  bool isLoading = false;
   final TextEditingController _searchController = TextEditingController();
+  final SearchService _searchService = SearchService();
+
+  late TabController _tabController;
+  Timer? _debounce;
+
+  List<Map<String, dynamic>> userResults = [];
+  List<Map<String, dynamic>> moduleResults = [];
+  bool isLoading = false;
+  // final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) return;
+      final query = _searchController.text.trim();
+      if (query.isNotEmpty) _search(query);
+    });
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      if (!mounted) return;
+      _search(value);
+    });
+  }
+
   Future<void> _search(String query) async {
-    if (query.trim().length < 2) {
-      setState(() => searchResults = []);
+    final q = query.trim();
+
+    if (q.length < 2) {
+      if (!mounted) return;
+      setState(() {
+        userResults = [];
+        moduleResults = [];
+        isLoading = false;
+      });
       return;
     }
 
+    if (!mounted) return;
     setState(() => isLoading = true);
 
     try {
-      List<Map<String, dynamic>> results = [];
-      final q = query.trim();
-
-      if (_tabController.index == 0) { // 👥 Пользователи
-        final snapshot = await usersCollection
-            .where('имя пользователя',
-                isGreaterThanOrEqualTo: q,
-                isLessThanOrEqualTo: q + '\uf8ff')
-            .limit(20)
-            .get();
-
-        results = snapshot.docs.map((doc) => {
-          'type': 'user',
-          'id': doc.id!,
-          'name': doc['имя пользователя'] ?? 'Без имени',
-          'email': doc['email'] ?? '',
-        }).toList();
-
-      } else { 
-        final snapshot = await modulesCollection
-            .where('name',
-                isGreaterThanOrEqualTo: q,
-                isLessThanOrEqualTo: q + '\uf8ff')
-            .where('isPublic', isEqualTo: true)
-            .orderBy('cardsCount', descending: true)
-            .limit(20)
-            .get();
-
-        results = snapshot.docs.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          return {
-            'type': 'module',
-            'id': doc.id!,
-            'name': data['name'] ?? 'Без названия',
-            'cardsCount': data['cardsCount'] ?? 0,
-            'userId': doc.reference.parent.parent!.id,
-            'description': data['description']?.toString() ?? '',
-          };
-        }).toList();
+      if (_tabController.index == 0) {
+        final users = await _searchService.searchUsers(q);
+        if (!mounted) return;
+        setState(() {
+          userResults = users;
+          isLoading = false;
+        });
+      } else {
+        final modules = await _searchService.searchModules(q);
+        if (!mounted) return;
+        setState(() {
+          moduleResults = modules;
+          isLoading = false;
+        });
       }
-
-      setState(() {
-        searchResults = results;
-        isLoading = false;
-      });
     } catch (e) {
-      print('Ошибка поиска: $e');
+      if (!mounted) return;
       setState(() {
-        searchResults = [];
+        userResults = [];
+        moduleResults = [];
         isLoading = false;
       });
+      debugPrint('Ошибка поиска: $e');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    // final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -108,21 +106,18 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
             hintStyle: TextStyle(color: Colors.white70),
             border: InputBorder.none,
             prefixIcon: Icon(Icons.search, color: Colors.white70),
-            suffixIcon: IconButton(
-              icon: Icon(Icons.clear, color: Colors.white70),
-              onPressed: () {
-                _searchController.clear();
-                setState(() => searchResults = []);
-              },
-            ),
+            suffixIcon: 
+            // IconButton(
+            //   icon: 
+              Icon(Icons.clear, color: Colors.white70),
+              // onPressed: () {
+              //   _searchController.clear();
+              //   setState(() => searchResults = []);
+              // },
+            // ),
           ),
-          onChanged: (value) {
-            Future.delayed(const Duration(milliseconds: 500), () {
-              if (_searchController.text == value) {
-                _search(value);
-              }
-            });
-          },
+          onChanged: _onSearchChanged,
+          
         ),
         bottom: TabBar(
           controller: _tabController,
@@ -142,19 +137,8 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
             child: TabBarView(
               controller: _tabController,
               children: [
-                // 👥 Пользователи → профиль
-                _buildResultsList(
-                  context,
-                  searchResults.where((r) => r['type'] == 'user').toList(),
-                  Icons.people,
-                  'Пользователи не найдены',
-                ),
-                _buildResultsList(
-                  context,
-                  searchResults.where((r) => r['type'] == 'module').toList(),
-                  Icons.menu_book,
-                  'Модули не найдены',
-                ),
+                _buildUserResults(),
+                _buildModuleResults(),
               ],
             ),
           ),
@@ -163,83 +147,62 @@ class _SearchPageState extends State<SearchPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildResultsList(BuildContext context, List<Map<String, dynamic>> results, 
-      IconData emptyIcon, String emptyText) {
-    if (results.isEmpty && _searchController.text.trim().isNotEmpty && !isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(emptyIcon, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(emptyText, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text('Попробуйте другое название', 
-                 style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
+  Widget _buildUserResults() {
+    if (userResults.isEmpty && _searchController.text.trim().isNotEmpty && !isLoading) {
+      return _emptyState(Icons.people, 'Пользователи не найдены');
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: results.length,
+      itemCount: userResults.length,
       itemBuilder: (context, index) {
-        final item = results[index];
-        
-        if (item['type'] == 'user') {
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-                child: Text(item['name'][0].toUpperCase()),
-              ),
-              title: Text(item['name']),
-              subtitle: Text(item['email'].isNotEmpty ? item['email'] : 'Модули доступны'),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PublicUserProfilePage(
-                    targetUserId: item['id'],
-                    targetUsername: item['name'],
-                  ),
-                ),
-              ),
-            ),
-          );
-        } else {
-          return Card(
-            margin: const EdgeInsets.symmetric(vertical: 4),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                child: Text('${item['cardsCount']}'),
-              ),
-              title: Text(item['name']),
-              subtitle: Text(
-                item['description'],
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              trailing: const Icon(Icons.arrow_forward_ios),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => UserCardsList(
-                    moduleId: item['id']?.toString() ?? 'unknown',
-                    moduleName: item['name']?.toString() ?? 'Без названия',
-                    authorId: item['userId']?.toString() ?? '',
-                    isPublicStudy: true,  
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
+        final item = userResults[index];
+        return UserSearchTile(
+          userId: item['id']?.toString() ?? '',
+          name: item['name']?.toString() ?? 'Без имени',
+          email: item['email']?.toString() ?? '',
+          avatarUrl: item['avatarUrl']?.toString() ?? '',
+        );
       },
+    );
+  }
+
+  Widget _buildModuleResults() {
+    if (moduleResults.isEmpty && _searchController.text.trim().isNotEmpty && !isLoading) {
+      return _emptyState(Icons.menu_book, 'Модули не найдены');
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: moduleResults.length,
+      itemBuilder: (context, index) {
+        final item = moduleResults[index];
+        return ModuleSearchTile(
+          moduleId: item['id']?.toString() ?? '',
+          moduleName: item['name']?.toString() ?? 'Без названия',
+          description: item['description']?.toString() ?? '',
+          cardsCount: item['cardsCount'] ?? 0,
+          authorId: item['userId']?.toString() ?? '',
+        );
+      },
+    );
+  }
+
+  Widget _emptyState(IconData icon, String text) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 64, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(text, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Попробуйте другое название',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
     );
   }
 }
